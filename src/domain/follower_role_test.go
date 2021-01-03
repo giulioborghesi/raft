@@ -78,6 +78,36 @@ func TestAppendEntry(t *testing.T) {
 	}
 }
 
+func TestMakeCandidate(t *testing.T) {
+	// Initialize mocked server state dao
+	dao := new(mockedServerStateDao)
+	dao.currentTerm = startingTerm
+	dao.votedFor = startingVotedFor
+
+	// Initialize server state
+	s := new(serverState)
+	s.dao = dao
+
+	// Instantiate follower
+	f := new(followerRole)
+
+	// Change server role to candidate
+	f.makeCandidate(s)
+	term, votedFor := s.votedFor()
+	if term != startingTerm+1 {
+		t.Errorf("wrong term following makeCandidate: expected %d, actual %d",
+			startingTerm+1, term)
+	}
+
+	if votedFor != -1 {
+		t.Errorf("vote should have not been casted following makeCandidate")
+	}
+
+	if s.role != candidate {
+		t.Errorf("role should be candidate following makeCandidate")
+	}
+}
+
 func TestRequestVote(t *testing.T) {
 	// Initialize mocked server state dao
 	dao := new(mockedServerStateDao)

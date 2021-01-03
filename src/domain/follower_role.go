@@ -21,6 +21,17 @@ func (f *followerRole) appendEntry(serverTerm int64,
 	return currentTerm, true
 }
 
+func (f *followerRole) makeCandidate(s *serverState) {
+	// Get current term
+	currentTerm := s.currentTerm()
+
+	// Change role to candidate and update term
+	s.role = candidate
+	s.updateTerm(currentTerm + 1)
+}
+
+func (f *followerRole) makeFollower(serverTerm int64, s *serverState) {}
+
 func (f *followerRole) requestVote(serverTerm int64,
 	serverID int64, s *serverState) (int64, bool) {
 	// Get current term and ID of server that has received this server's vote
