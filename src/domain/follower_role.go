@@ -41,3 +41,8 @@ func (f *followerRole) requestVote(serverTerm int64,
 	s.lastModified = time.Now()
 	return currentTerm, true
 }
+
+func (f *followerRole) startElection(currentTerm int64,
+	localServerID int64) bool {
+	return false
+}

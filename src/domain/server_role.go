@@ -12,4 +12,9 @@ type serverRole interface {
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server for the current term
 	requestVote(int64, int64, *serverState) (int64, bool)
+
+	// startElection starts an election. Only candidates can start an election
+	// and be elected: calling this method on followers and leaders should
+	// automatically return false
+	startElection(int64, int64) bool
 }
