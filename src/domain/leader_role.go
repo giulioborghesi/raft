@@ -40,3 +40,8 @@ func (f *leaderRole) requestVote(serverTerm int64, serverID int64,
 	// Candidate term is not greater than server term, deny vote
 	return currentTerm, false
 }
+
+func (f *leaderRole) startElection(currentTerm int64,
+	localServerID int64) bool {
+	return false
+}
