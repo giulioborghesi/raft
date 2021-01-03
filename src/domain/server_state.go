@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"sync"
 	"time"
 
 	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
@@ -33,7 +32,6 @@ func getServerState() *serverState {
 
 // serverState represents the state of a Raft server
 type serverState struct {
-	sync.Mutex
 	dao          server_state_dao.ServerStateDao
 	lastModified time.Time
 	role         int
