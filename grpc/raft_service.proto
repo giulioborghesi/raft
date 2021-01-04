@@ -1,0 +1,32 @@
+syntax="proto3";
+
+option go_package="github.com/giulioborghesi/raft-implementation/src/service";
+
+// Raft service definition
+service Raft {
+    // Append a log entry to the log
+    rpc AppendEntry(AppendEntryRequest) returns (AppendEntryReply) {}
+
+    // Request vote from server
+    rpc RequestVote(RequestVoteRequest) returns (RequestVoteReply) {}
+}
+
+message AppendEntryRequest {
+    int64 serverTerm = 1;
+    int64 serverID = 2;
+}
+
+message AppendEntryReply {
+    int64 currentTerm = 1;
+    bool success = 2;
+}
+
+message RequestVoteRequest {
+    int64 serverTerm = 1;
+    int64 serverID = 2;
+}
+
+message RequestVoteReply {
+    int64 currentTerm = 1;
+    int64 success = 2;
+}
