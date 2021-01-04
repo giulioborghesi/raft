@@ -21,16 +21,19 @@ func (f *followerRole) appendEntry(serverTerm int64,
 	return currentTerm, true
 }
 
-func (f *followerRole) makeCandidate(s *serverState) {
+func (f *followerRole) makeCandidate(s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
-	// Change role to candidate and update term
+	// Change role to candidate, update term and voted for
 	s.role = candidate
-	s.updateTerm(currentTerm + 1)
+	s.updateTermVotedFor(currentTerm+1, s.serverID)
+	return true
 }
 
-func (f *followerRole) makeFollower(serverTerm int64, s *serverState) {}
+func (f *followerRole) makeFollower(serverTerm int64, s *serverState) bool {
+	return true
+}
 
 func (f *followerRole) requestVote(serverTerm int64,
 	serverID int64, s *serverState) (int64, bool) {

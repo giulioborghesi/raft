@@ -23,18 +23,23 @@ func (f *leaderRole) appendEntry(serverTerm int64,
 	return currentTerm, false
 }
 
-func (f *leaderRole) makeCandidate(s *serverState) {}
+func (f *leaderRole) makeCandidate(s *serverState) bool {
+	return false
+}
 
-func (f *leaderRole) makeFollower(serverTerm int64, s *serverState) {
+func (f *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
-	// If server term greater than current term, change role to follower and
-	// update term
-	if currentTerm < serverTerm {
-		s.role = follower
-		s.updateTerm(serverTerm)
+	// Leader remains leader ff server term not greater than current term
+	if currentTerm >= serverTerm {
+		return false
 	}
+
+	// Change role to follower and update term
+	s.role = follower
+	s.updateTerm(serverTerm)
+	return true
 }
 
 func (f *leaderRole) requestVote(serverTerm int64, serverID int64,
