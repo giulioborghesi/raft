@@ -87,6 +87,7 @@ func TestMakeCandidate(t *testing.T) {
 	// Initialize server state
 	s := new(serverState)
 	s.dao = dao
+	s.serverID = 2
 
 	// Instantiate follower
 	f := new(followerRole)
@@ -99,8 +100,8 @@ func TestMakeCandidate(t *testing.T) {
 			startingTerm+1, term)
 	}
 
-	if votedFor != -1 {
-		t.Errorf("vote should have not been casted following makeCandidate")
+	if votedFor != 2 {
+		t.Errorf("vote should have been casted for local server")
 	}
 
 	if s.role != candidate {

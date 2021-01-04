@@ -10,10 +10,10 @@ type serverRole interface {
 	appendEntry(int64, int64, *serverState) (int64, bool)
 
 	// makeFollower implements the role transition logic to follower
-	makeFollower(int64, *serverState)
+	makeFollower(int64, *serverState) bool
 
 	// makeCandidate implements the role transition logic to candidate
-	makeCandidate(*serverState)
+	makeCandidate(*serverState) bool
 
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server for the current term

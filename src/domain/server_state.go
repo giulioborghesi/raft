@@ -35,6 +35,7 @@ type serverState struct {
 	dao          server_state_dao.ServerStateDao
 	lastModified time.Time
 	role         int
+	serverID     int64
 }
 
 // currentTerm returns the current term ID
