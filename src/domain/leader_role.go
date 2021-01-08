@@ -1,6 +1,13 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
+
+const (
+	leaderErrFmt = "%s should not be called when a server is a follower"
+)
 
 type leaderRole struct{}
 
@@ -21,6 +28,11 @@ func (l *leaderRole) appendEntry(serverTerm int64,
 			"calling appendEntry")
 	}
 	return currentTerm, false
+}
+
+func (l *leaderRole) finalizeElection(_ int64, _ []requestVoteResult,
+	_ *serverState) {
+	panic(fmt.Sprintf(leaderErrFmt, "finalizeElection"))
 }
 
 func (l *leaderRole) makeCandidate(s *serverState) bool {
@@ -61,5 +73,5 @@ func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
 
 func (l *leaderRole) startElection(servers []string,
 	s *serverState) []chan requestVoteResult {
-	panic("startElection should not be called when a server is the leader")
+	panic(fmt.Sprintf(leaderErrFmt, "startElection"))
 }

@@ -1,6 +1,13 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
+
+const (
+	followerErrFmt = "%s should not be called when a server is a follower"
+)
 
 type followerRole struct{}
 
@@ -19,6 +26,11 @@ func (f *followerRole) appendEntry(serverTerm int64,
 	}
 	s.lastModified = time.Now()
 	return currentTerm, true
+}
+
+func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
+	_ *serverState) {
+	panic(fmt.Sprintf(followerErrFmt, "finalizeElection"))
 }
 
 func (f *followerRole) makeCandidate(s *serverState) bool {
@@ -58,5 +70,5 @@ func (f *followerRole) requestVote(serverTerm int64,
 
 func (f *followerRole) startElection(currentTerm int64,
 	localServerID int64) []chan requestVoteResult {
-	panic("startElection should not be called when a server is a follower")
+	panic(fmt.Sprintf(followerErrFmt, "startElection"))
 }
