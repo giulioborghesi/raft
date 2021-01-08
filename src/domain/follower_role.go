@@ -57,6 +57,6 @@ func (f *followerRole) requestVote(serverTerm int64,
 }
 
 func (f *followerRole) startElection(currentTerm int64,
-	localServerID int64) bool {
-	return false
+	localServerID int64) []chan requestVoteResult {
+	panic("startElection should not be called when a server is a follower")
 }

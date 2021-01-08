@@ -62,22 +62,21 @@ func TestVoteRequestRPCSuccess(t *testing.T) {
 
 	// Prepare calling arguments and send vote request
 	var currentTerm int64 = initialServerTerm
-	success, serverTerm, err := r.requestVote("bufnet", currentTerm,
-		defaultCandidateID)
+	result := r.requestVote("bufnet", currentTerm, defaultCandidateID)
 
 	// We expect the request vote RPC to be rejected as the remote server term
 	// is larger than the candidate server term
-	if err != nil {
-		t.Errorf("requestVote RPC failed with error: %v", err)
+	if result.err != nil {
+		t.Errorf("requestVote RPC failed with error: %v", result.err)
 	}
 
-	if !success {
+	if !result.success {
 		t.Errorf("requestVote RPC expected to succeed, failed instead")
 	}
 
-	if serverTerm != currentTerm {
+	if result.serverTerm != currentTerm {
 		t.Errorf("requestVote RPC returned wrong remote server term: "+
-			"expected %d, actual %d", currentTerm, serverTerm)
+			"expected %d, actual %d", currentTerm, result.serverTerm)
 	}
 }
 
@@ -89,15 +88,15 @@ func TestVoteRequestRPCTimeout(t *testing.T) {
 
 	// Prepare calling arguments and send vote request
 	var currentTerm int64 = initialServerTerm
-	_, _, err := r.requestVote("bufnet", currentTerm,
+	result := r.requestVote("bufnet", currentTerm,
 		timeoutCandidateID)
 
 	// We expect the request vote RPC to experience a timeout failure
-	if err == nil {
+	if result.err == nil {
 		t.Errorf("requestVote RPC expected to fail due to timeout")
 	}
 
-	if errcode := status.Code(err); errcode != codes.DeadlineExceeded {
+	if errcode := status.Code(result.err); errcode != codes.DeadlineExceeded {
 		t.Errorf("requestVote RPC failed with invalid error code: "+
 			"expected: %d, actual %d", codes.DeadlineExceeded, int(errcode))
 	}

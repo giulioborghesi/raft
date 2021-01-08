@@ -4,7 +4,7 @@ import "time"
 
 type leaderRole struct{}
 
-func (f *leaderRole) appendEntry(serverTerm int64,
+func (l *leaderRole) appendEntry(serverTerm int64,
 	serverID int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
@@ -23,11 +23,11 @@ func (f *leaderRole) appendEntry(serverTerm int64,
 	return currentTerm, false
 }
 
-func (f *leaderRole) makeCandidate(s *serverState) bool {
+func (l *leaderRole) makeCandidate(s *serverState) bool {
 	return false
 }
 
-func (f *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
+func (l *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
@@ -42,7 +42,7 @@ func (f *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
 	return true
 }
 
-func (f *leaderRole) requestVote(serverTerm int64, serverID int64,
+func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
 	s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
@@ -59,7 +59,7 @@ func (f *leaderRole) requestVote(serverTerm int64, serverID int64,
 	return currentTerm, false
 }
 
-func (f *leaderRole) startElection(currentTerm int64,
-	localServerID int64) bool {
-	return false
+func (l *leaderRole) startElection(servers []string,
+	s *serverState) []chan requestVoteResult {
+	panic("startElection should not be called when a server is the leader")
 }

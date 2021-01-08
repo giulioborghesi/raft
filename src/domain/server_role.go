@@ -21,6 +21,6 @@ type serverRole interface {
 
 	// startElection starts an election. Only candidates can start an election
 	// and be elected: calling this method on followers and leaders should
-	// automatically return false
-	startElection(int64, int64) bool
+	// panic
+	startElection(servers []string, s *serverState) []chan requestVoteResult
 }
