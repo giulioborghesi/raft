@@ -183,13 +183,3 @@ func TestRequestVote(t *testing.T) {
 		t.Errorf("requestVote failed although it was expected to succeed")
 	}
 }
-
-func TestStartElection(t *testing.T) {
-	// Instantiate follower
-	f := new(followerRole)
-	elected := f.startElection(-1, -1)
-
-	if elected {
-		t.Errorf("followers cannot start an election")
-	}
-}
