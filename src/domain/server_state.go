@@ -4,7 +4,6 @@ import (
 	"time"
 
 	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
-	mysql_server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources/mysql"
 )
 
 const (
@@ -20,7 +19,6 @@ var (
 
 func init() {
 	state = new(serverState)
-	state.dao = mysql_server_state_dao.Dao
 	state.lastModified = time.Now()
 	state.role = follower
 }

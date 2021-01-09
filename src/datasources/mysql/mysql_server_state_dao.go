@@ -3,139 +3,112 @@ package mysql_server_state_dao
 import (
 	"database/sql"
 	"fmt"
-	"os"
-	"time"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
-	queryGetTerm            = "SELECT value from ServerStatus where id=0;"
-	queryGetVotedFor        = "SELECT value from ServerSatatus where id=1;"
-	queryUpdateVotedFor     = "UPDATE ServerStatus SET value=? where id=1;"
-	queryUpdateTermVotedFor = "UPDATE ServerStatus SET value=? where id=0, " +
-		"SET value=? WHERE id=1;"
+	// Statements to create schema and table
+	createSchemaStatement = "CREATE DATABASE IF NOT EXISTS %s;"
+	createTableStatement  = "CREATE TABLE IF NOT EXISTS %s.%s (" +
+		"id INT PRIMARY KEY, term BIGINT, votedFor BIGINT);"
+
+	// Statement to pre-fill table
+	fillTableStatement = "INSERT IGNORE INTO %s.%s VALUES(0, 0, -1);"
+
+	// Queries to search records
+	getTermQuery     = "SELECT term FROM %s.%s WHERE id=0;"
+	getVotedForQuery = "SELECT votedFor FROM %s.%s WHERE id=0;"
+
+	// Queries to update records
+	updateVotedForQuery     = "UPDATE %s.%s SET votedFor=? WHERE id=0;"
+	updateTermVotedForQuery = "UPDATE %s.%s SET term=?, votedFor=? WHERE id=0;"
 )
 
-var (
-	db  *sql.DB
-	Dao *MySqlServerStateDao
-)
-
-func init() {
-	// Fetch MySql parameters from environment variables
-	usr := os.Getenv("MYSQL_USERNAME")
-	pwd := os.Getenv("MYSQL_PASSWORD")
-	host := os.Getenv("MYSQL_HOSTNAME")
-	port := os.Getenv("MYSQL_HOSTPORT")
-	dbn := os.Getenv("MYSQL_DB_NAME")
-
-	// Initialize database
-	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", usr, pwd, host, port, dbn)
-	db, err := sql.Open("mysql", dataSourceName)
-	if err != nil {
-		panic(err)
-	}
-
-	// Setup database
-	db.SetConnMaxLifetime(time.Minute * 3)
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(5)
-
-	// Initialize server state DAO
-	Dao = new(MySqlServerStateDao)
-}
-
-type MySqlServerStateDao struct {
+// mySqlServerStateDao implements the ServerStateDao interface. It is intended
+// to be used internally by the package: exported implementation should build
+// on top of mySqlServerStateDao
+type mySqlServerStateDao struct {
+	db          *sql.DB
 	currentTerm int64
 	votedFor    int64
+	schemaName  string
+	tableName   string
 }
 
-func currentTerm() (int64, error) {
-	stmt, err := db.Prepare(queryGetTerm)
+// executeStatement executes a SQL statement and returns the SQL result if
+// successful, an error otherwise
+func executeStatement(db *sql.DB, statement string) (sql.Result, error) {
+	return db.Exec(statement)
+}
+
+// executeSearchQuery executes a SQL query and returns the SQL result if
+// successful, an error otherwise
+func executeSearchQuery(db *sql.DB, query string,
+	args ...interface{}) (int64, error) {
+	stmt, err := db.Prepare(query)
 	if err != nil {
 		return 0, err
 	}
 	defer stmt.Close()
 
-	var currentTerm int64
-	row := stmt.QueryRow()
-	err = row.Scan(&currentTerm)
-	return currentTerm, err
+	var result int64
+	row := stmt.QueryRow(args...)
+	err = row.Scan(&result)
+	return result, err
 }
 
-func votedFor() (int64, error) {
-	stmt, err := db.Prepare(queryGetVotedFor)
+// executeUpdateQuery executes a SQL update query and returns the SQL result
+// if successful, an error otherwise
+func executeUpdateQuery(db *sql.DB, query string,
+	args ...interface{}) (sql.Result, error) {
+	stmt, err := db.Prepare(query)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer stmt.Close()
 
-	var votedFor int64
-	row := stmt.QueryRow()
-	err = row.Scan(&votedFor)
-	return votedFor, err
+	return stmt.Exec(args...)
 }
 
-// initialize is used to initialize the server state DAO object by reading the
-// current term and the voted for variables from the database
-func (s *MySqlServerStateDao) initialize() {
-	currentTerm, err := currentTerm()
-	if err != nil {
-		panic(err)
-	}
-
-	votedFor, err := votedFor()
-	if err != nil {
-		panic(err)
-	}
-
-	s.currentTerm = currentTerm
-	s.votedFor = votedFor
+func (d *mySqlServerStateDao) CurrentTerm() int64 {
+	return d.currentTerm
 }
 
-func (s *MySqlServerStateDao) CurrentTerm() int64 {
-	return s.currentTerm
+func (d *mySqlServerStateDao) UpdateTerm(newTerm int64) error {
+	return d.UpdateTermVotedFor(newTerm, -1)
 }
 
-func (s *MySqlServerStateDao) UpdateTerm(newTerm int64) error {
-	return s.UpdateTermVotedFor(newTerm, -1)
-}
-
-func (s *MySqlServerStateDao) UpdateTermVotedFor(newTerm int64,
+func (d *mySqlServerStateDao) UpdateTermVotedFor(newTerm int64,
 	votedFor int64) error {
-	if newTerm <= s.currentTerm {
+	if newTerm <= d.currentTerm {
 		panic("term number must increase monotonically")
 	}
-	s.currentTerm = newTerm
-	s.votedFor = votedFor
 
-	stmt, err := db.Prepare(queryUpdateTermVotedFor)
-	if err != nil {
-		panic(err)
+	query := fmt.Sprintf(updateTermVotedForQuery, d.schemaName, d.tableName)
+	_, err := executeUpdateQuery(d.db, query, newTerm, votedFor)
+
+	// Update in-memory state only if data was successfully persisted
+	if err == nil {
+		d.votedFor = votedFor
+		d.currentTerm = newTerm
 	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(newTerm, votedFor)
 	return err
 }
 
-func (s *MySqlServerStateDao) UpdateVotedFor(votedFor int64) error {
-	if s.votedFor != -1 {
-		panic("cannot vote for more than one server in the same term")
+func (d *mySqlServerStateDao) UpdateVotedFor(votedFor int64) error {
+	if d.votedFor != -1 {
+		panic("server has already casted a vote in the current term")
 	}
-	s.votedFor = votedFor
 
-	stmt, err := db.Prepare(queryUpdateVotedFor)
-	if err != nil {
-		panic(err)
+	query := fmt.Sprintf(updateVotedForQuery, d.schemaName, d.tableName)
+	_, err := executeUpdateQuery(d.db, query, votedFor)
+
+	// Update in-memory state only if data was successfully persisted
+	if err == nil {
+		d.votedFor = votedFor
 	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(votedFor)
 	return err
 }
 
-func (s *MySqlServerStateDao) VotedFor() (int64, int64) {
-	return s.currentTerm, s.votedFor
+func (d *mySqlServerStateDao) VotedFor() (int64, int64) {
+	return d.currentTerm, d.votedFor
 }
