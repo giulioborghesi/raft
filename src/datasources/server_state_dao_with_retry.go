@@ -3,7 +3,7 @@ package server_state_dao
 import "time"
 
 const (
-	nMaxRetries = 10
+	maxRetries = 10
 )
 
 type ServerStateDaoWithRetry struct {
@@ -13,7 +13,7 @@ type ServerStateDaoWithRetry struct {
 func (d *ServerStateDaoWithRetry) UpdateTermVotedFor(newTerm int64,
 	newVotedFor int64) error {
 	var err error
-	for i := 0; i < nMaxRetries; i++ {
+	for i := 0; i < maxRetries; i++ {
 		// Try to run operation
 		err = d.ServerStateDao.UpdateTermVotedFor(newTerm, newVotedFor)
 		if err == nil {
@@ -29,7 +29,7 @@ func (d *ServerStateDaoWithRetry) UpdateTermVotedFor(newTerm int64,
 
 func (d *ServerStateDaoWithRetry) UpdateVotedFor(newVotedFor int64) error {
 	var err error
-	for i := 0; i < nMaxRetries; i++ {
+	for i := 0; i < maxRetries; i++ {
 		// Try to run operation
 		err = d.ServerStateDao.UpdateVotedFor(newVotedFor)
 		if err == nil {
