@@ -2,7 +2,6 @@ package domain
 
 import (
 	"fmt"
-	"time"
 )
 
 const (
@@ -56,19 +55,7 @@ func (l *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
 
 func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
 	s *serverState) (int64, bool) {
-	// Get current term
-	currentTerm := s.currentTerm()
-
-	// Candidate term is greater than server term, grant vote
-	if currentTerm < serverTerm {
-		s.role = follower
-		s.updateTerm(serverTerm)
-		s.lastModified = time.Now()
-		return serverTerm, true
-	}
-
-	// Candidate term is not greater than server term, deny vote
-	return currentTerm, false
+	panic(fmt.Sprintf(leaderErrFmt, "requestVote"))
 }
 
 func (l *leaderRole) startElection(servers []string,
