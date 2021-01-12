@@ -14,18 +14,18 @@ const (
 
 var (
 	// Only one instance of serverState per server should exist
-	state *serverState
+	uniqueServerState *serverState
 )
 
 func init() {
-	state = new(serverState)
-	state.lastModified = time.Now()
-	state.role = follower
+	uniqueServerState = new(serverState)
+	uniqueServerState.lastModified = time.Now()
+	uniqueServerState.role = follower
 }
 
 // getServerState returns a pointer to the unique instance of serverState
 func getServerState() *serverState {
-	return state
+	return uniqueServerState
 }
 
 // serverState represents the state of a Raft server
