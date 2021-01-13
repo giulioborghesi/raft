@@ -33,13 +33,20 @@ func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
 	panic(fmt.Sprintf(followerErrFmt, "finalizeElection"))
 }
 
-func (f *followerRole) makeCandidate(s *serverState) bool {
+func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
+	// Cannot become a candidate if time since last change is less than timeout
+	d := time.Since(s.lastModified)
+	if d < to {
+		return false
+	}
+
 	// Get current term
 	currentTerm := s.currentTerm()
 
-	// Change role to candidate, update term and voted for
+	// Change role to candidate, update term, voted for and last modified
 	s.role = candidate
 	s.updateTermVotedFor(currentTerm+1, s.serverID)
+	s.lastModified = time.Now()
 	return true
 }
 

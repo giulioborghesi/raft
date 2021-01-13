@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // serverRole defines the interface for a server's role in RAFT. There exists
 // three roles: follower, candidate and leader. Each role implements a distinct
 // behavior for the following endpoints: requestVote, appendEntry and
@@ -19,7 +21,7 @@ type serverRole interface {
 	makeFollower(int64, *serverState) bool
 
 	// makeCandidate implements the role transition logic to candidate
-	makeCandidate(*serverState) bool
+	makeCandidate(time.Duration, *serverState) bool
 
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server for the current term

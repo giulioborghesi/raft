@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"time"
 )
 
 const (
@@ -34,7 +35,7 @@ func (l *leaderRole) finalizeElection(_ int64, _ []requestVoteResult,
 	panic(fmt.Sprintf(leaderErrFmt, "finalizeElection"))
 }
 
-func (l *leaderRole) makeCandidate(s *serverState) bool {
+func (l *leaderRole) makeCandidate(_ time.Duration, s *serverState) bool {
 	return false
 }
 
@@ -42,14 +43,15 @@ func (l *leaderRole) makeFollower(serverTerm int64, s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
-	// Leader remains leader ff server term not greater than current term
+	// Leader remains leader if server term not greater than current term
 	if currentTerm >= serverTerm {
 		return false
 	}
 
-	// Change role to follower and update term
+	// Change role to follower, update term and last modified
 	s.role = follower
 	s.updateTerm(serverTerm)
+	s.lastModified = time.Now()
 	return true
 }
 

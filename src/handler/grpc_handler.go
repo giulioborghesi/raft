@@ -9,7 +9,7 @@ import (
 
 type RaftRPCHandler struct {
 	service.UnimplementedRaftServer
-	raftService domain.RaftService
+	raftService domain.AbstractRaftService
 }
 
 func (h *RaftRPCHandler) AppendEntry(ctx context.Context,
