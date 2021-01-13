@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// timeoutHandler defines an object that handles a timeout
-type timeoutHandler struct {
+// timeoutGenerator defines an object that handles a timeout
+type timeoutGenerator struct {
 	active       bool
 	tLastHandler func() time.Time
 	tOutHandler  func(time.Duration)
@@ -20,7 +20,7 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-// randomDuration returns a random duration in the [0, maxDuration-minDuration)
+// randomDuration returns a random duration in the [minDuration, maxDuration)
 // range
 func randomDuration(minDuration, maxDuration time.Duration) time.Duration {
 	delta := time.Duration(rand.Intn(int(maxDuration) - int(minDuration)))
@@ -48,12 +48,11 @@ func sleepTime(t time.Time, to, toMin, toMax time.Duration) (time.Duration,
 	return to - d, to, false
 }
 
-// ringAlarm starts a new election should the election timeout have expired.
-// The election timeout is computed as the sum of a constant contribution (
-// average election timeout) and a variable one (election timeout rms). A new
-// election is started iff the server is not the cluster leader and no action
-// has occurred since the election timeout had been set
-func (h *timeoutHandler) ringAlarm() {
+// ringAlarm starts the timeout handler and calls a timeout handler function
+// whenever the timeout has expired. A new timeout is generated only after
+// the current timeout has expired. Expiration occurs when the time elapsed
+// since the last change made to the server exceeds the timeout
+func (h *timeoutGenerator) ringAlarm() {
 	sleepFor, to, expired := sleepTime(time.Now(), h.to, h.toMin, h.toMax)
 	for h.active {
 		// Sleep for the specified time and update timeout

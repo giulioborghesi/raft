@@ -80,9 +80,9 @@ func TestSleepTime(t *testing.T) {
 
 }
 
-func TestElectionTimeoutHandler(t *testing.T) {
-	// Create timeout handler
-	handler := timeoutHandler{active: true, tLastHandler: lastModified,
+func TestTimeoutGenerator(t *testing.T) {
+	// Create timeout generator
+	handler := timeoutGenerator{active: true, tLastHandler: lastModified,
 		tOutHandler: timeOutHandler, toMin: toMin, toMax: toMax}
 
 	// Initialize current time
