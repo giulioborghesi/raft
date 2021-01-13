@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 const (
 	startingTerm     = 15
@@ -87,13 +90,14 @@ func TestMakeCandidate(t *testing.T) {
 	// Initialize server state
 	s := new(serverState)
 	s.dao = dao
+	s.lastModified = time.Now()
 	s.serverID = 2
 
 	// Instantiate follower
 	f := new(followerRole)
 
 	// Change server role to candidate
-	f.makeCandidate(s)
+	f.makeCandidate(time.Duration(0), s)
 	term, votedFor := s.votedFor()
 	if term != startingTerm+1 {
 		t.Errorf("wrong term following makeCandidate: expected %d, actual %d",
