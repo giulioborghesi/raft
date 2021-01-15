@@ -6,31 +6,32 @@ import (
 )
 
 const (
-	followerErrFmt = "%s should not be called when a server is a follower"
+	followerErrIdFmt   = "invalid leader id: expected: %d, actual: %d"
+	followerErrTermFmt = "invalid term number: expected: %d, actual: %d"
 )
 
 type followerRole struct{}
 
 func (f *followerRole) appendEntry(serverTerm int64,
 	serverID int64, s *serverState) (int64, bool) {
-	// Get current term
+	// Prior to calling appendEntry, both current term and leader ID have
+	// been updated
 	currentTerm := s.currentTerm()
-	if currentTerm > serverTerm {
-		return currentTerm, false
+	if currentTerm != serverTerm {
+		panic(fmt.Sprintf(followerErrTermFmt, currentTerm, serverTerm))
 	}
 
-	// Update current term if needed and return
-	if currentTerm < serverTerm {
-		currentTerm = serverTerm
-		s.updateTerm(currentTerm)
+	if serverID != s.leaderID {
+		panic(fmt.Sprintf(followerErrIdFmt, s.leaderID, serverID))
 	}
-	s.lastModified = time.Now()
+
+	// Return true
 	return currentTerm, true
 }
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) {
-	panic(fmt.Sprintf(followerErrFmt, "finalizeElection"))
+	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "follower"))
 }
 
 func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
@@ -46,11 +47,26 @@ func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
 	// Change role to candidate, update term, voted for and last modified
 	s.role = candidate
 	s.updateTermVotedFor(currentTerm+1, s.serverID)
+	s.leaderID = invalidLeaderID
 	s.lastModified = time.Now()
 	return true
 }
 
-func (f *followerRole) makeFollower(serverTerm int64, s *serverState) bool {
+func (f *followerRole) prepareAppend(serverTerm int64, serverID int64,
+	s *serverState) bool {
+	// Get current term
+	currentTerm := s.currentTerm()
+	if currentTerm > serverTerm {
+		return false
+	}
+
+	// Update term and leader ID
+	if currentTerm < serverTerm {
+		s.updateTerm(serverTerm)
+		s.leaderID = serverID
+	} else if s.leaderID != serverID {
+		panic(fmt.Sprintf(followerErrIdFmt, s.leaderID, serverID))
+	}
 	return true
 }
 
@@ -60,7 +76,7 @@ func (f *followerRole) requestVote(serverTerm int64,
 	// in the current term
 	currentTerm, votedFor := s.votedFor()
 	if (currentTerm > serverTerm) ||
-		(serverTerm == currentTerm && votedFor != -1) {
+		(serverTerm == currentTerm && votedFor != invalidLeaderID) {
 		return currentTerm, false
 	}
 
@@ -70,12 +86,13 @@ func (f *followerRole) requestVote(serverTerm int64,
 	} else {
 		currentTerm = serverTerm
 		s.updateTermVotedFor(currentTerm, serverID)
+		s.leaderID = invalidLeaderID
 	}
 	s.lastModified = time.Now()
 	return currentTerm, true
 }
 
-func (f *followerRole) startElection(currentTerm int64,
-	localServerID int64) []chan requestVoteResult {
-	panic(fmt.Sprintf(followerErrFmt, "startElection"))
+func (f *followerRole) startElection(servers []string,
+	s *serverState) []chan requestVoteResult {
+	panic(fmt.Sprintf(roleErrCallFmt, "startElection", "follower"))
 }

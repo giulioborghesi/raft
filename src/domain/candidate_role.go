@@ -1,38 +1,23 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/giulioborghesi/raft-implementation/src/utils"
+)
+
+const (
+	candidateErrFmt = "%s should not be called when a server is a candidate"
 )
 
 type candidateRole struct {
 	voteRequestorMaker func() voteRequestor
 }
 
-func (c *candidateRole) startElection(servers []string,
-	s *serverState) []chan requestVoteResult {
-	candidateTerm := s.currentTerm()
-	candidateID := s.serverID
-
-	// Request a vote from each server asynchronously
-	results := make([]chan requestVoteResult, 0, len(servers))
-	for _, server := range servers {
-		// Create vote requestor
-		r := c.voteRequestorMaker()
-		result := make(chan requestVoteResult)
-
-		// Request vote from server asynchronously
-		localServer := server
-		go func() {
-			result <- r.requestVote(localServer,
-				candidateTerm, candidateID)
-		}()
-		results = append(results, result)
-	}
-
-	// Return slice of results for each remote server
-	return results
+func (c *candidateRole) appendEntry(serverTerm int64, serverID int64,
+	s *serverState) (int64, bool) {
+	panic(fmt.Sprintf(candidateErrFmt, "appendEntry"))
 }
 
 func (c *candidateRole) finalizeElection(electionTerm int64,
@@ -63,6 +48,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	if maxTerm > s.currentTerm() {
 		s.role = follower
 		s.updateTerm(maxTerm)
+		s.leaderID = invalidLeaderID
 		s.lastModified = time.Now()
 		return
 	}
@@ -71,6 +57,76 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	// in the cluster
 	if count > ((1 + len(results)) / 2) {
 		s.role = leader
+		s.leaderID = s.serverID
 		s.lastModified = time.Now()
 	}
+}
+
+func (l *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
+	// Get current term
+	currentTerm := s.currentTerm()
+
+	// Update term, voted for and last modified. Leader ID already nil
+	s.updateTermVotedFor(currentTerm+1, s.serverID)
+	s.lastModified = time.Now()
+	return true
+}
+
+func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
+	s *serverState) bool {
+	// Get current term
+	currentTerm := s.currentTerm()
+
+	// Candidate remains candidate if server term less than current term
+	if currentTerm > serverTerm {
+		return false
+	}
+
+	// Change role to follower, update term and last modified
+	s.role = follower
+	s.updateTerm(serverTerm)
+	s.leaderID = serverID
+	s.lastModified = time.Now()
+	return true
+}
+
+func (c *candidateRole) requestVote(serverTerm int64,
+	serverID int64, s *serverState) (int64, bool) {
+	// Get current term
+	currentTerm := s.currentTerm()
+	if currentTerm >= serverTerm {
+		return currentTerm, false
+	}
+
+	// Remote server has a term higher than current one, cast vote and convert
+	// to follower
+	s.role = follower
+	s.updateTermVotedFor(serverTerm, serverID)
+	s.lastModified = time.Now()
+	return serverTerm, true
+}
+
+func (c *candidateRole) startElection(servers []string,
+	s *serverState) []chan requestVoteResult {
+	candidateTerm := s.currentTerm()
+	candidateID := s.serverID
+
+	// Request a vote from each server asynchronously
+	results := make([]chan requestVoteResult, 0, len(servers))
+	for _, server := range servers {
+		// Create vote requestor
+		r := c.voteRequestorMaker()
+		result := make(chan requestVoteResult)
+
+		// Request vote from server asynchronously
+		localServer := server
+		go func() {
+			result <- r.requestVote(localServer,
+				candidateTerm, candidateID)
+		}()
+		results = append(results, result)
+	}
+
+	// Return slice of results for each remote server
+	return results
 }
