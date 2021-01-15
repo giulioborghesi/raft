@@ -48,6 +48,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	if maxTerm > s.currentTerm() {
 		s.role = follower
 		s.updateTerm(maxTerm)
+		s.leaderID = invalidLeaderID
 		s.lastModified = time.Now()
 		return
 	}
@@ -56,6 +57,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	// in the cluster
 	if count > ((1 + len(results)) / 2) {
 		s.role = leader
+		s.leaderID = s.serverID
 		s.lastModified = time.Now()
 	}
 }
@@ -64,13 +66,14 @@ func (l *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
-	// Update term, voted for and last modified
+	// Update term, voted for and last modified. Leader ID already nil
 	s.updateTermVotedFor(currentTerm+1, s.serverID)
 	s.lastModified = time.Now()
 	return true
 }
 
-func (c *candidateRole) makeFollower(serverTerm int64, s *serverState) bool {
+func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
+	s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 
@@ -82,6 +85,7 @@ func (c *candidateRole) makeFollower(serverTerm int64, s *serverState) bool {
 	// Change role to follower, update term and last modified
 	s.role = follower
 	s.updateTerm(serverTerm)
+	s.leaderID = serverID
 	s.lastModified = time.Now()
 	return true
 }
