@@ -10,6 +10,8 @@ const (
 	follower = iota
 	leader
 	candidate
+
+	invalidLeaderID = 0
 )
 
 var (
@@ -34,6 +36,7 @@ type serverState struct {
 	lastModified time.Time
 	role         int
 	serverID     int64
+	leaderID     int64
 }
 
 // currentTerm returns the current term ID
