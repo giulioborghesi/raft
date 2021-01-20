@@ -37,7 +37,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 		}
 
 		// Count votes received and determine max term seen
-		maxTerm = utils.MaxI64(maxTerm, result.serverTerm)
+		maxTerm = utils.MaxInt64(maxTerm, result.serverTerm)
 		if result.success {
 			count += 1
 		}
@@ -62,7 +62,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	}
 }
 
-func (l *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
+func (c *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
 	// Get current term
 	currentTerm := s.currentTerm()
 

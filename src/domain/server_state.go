@@ -12,6 +12,7 @@ const (
 	candidate
 
 	invalidLeaderID = 0
+	invalidTermID   = -1
 )
 
 var (
