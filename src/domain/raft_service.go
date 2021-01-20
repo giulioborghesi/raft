@@ -34,6 +34,28 @@ func (s *raftService) AppendEntry(remoteServerTerm int64,
 		remoteServerID, s.state)
 }
 
+func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
+	s.Lock()
+	defer s.Unlock()
+
+	term := s.state.currentTerm()
+	if entryIndex > 0 {
+		return term, invalidTermID
+	}
+	return s.state.currentTerm(), 0
+}
+
+func (s *raftService) makeFollower(leaderTerm int64) {
+	s.Lock()
+	defer s.Unlock()
+
+	term := s.state.currentTerm()
+	if term < leaderTerm {
+		s.state.updateTerm(leaderTerm)
+		s.state.role = follower
+	}
+}
+
 func (s *raftService) lastModified() time.Time {
 	// Lock access to server state
 	s.Lock()
