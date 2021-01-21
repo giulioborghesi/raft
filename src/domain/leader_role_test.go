@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"container/list"
 	"fmt"
 	"testing"
 	"time"
@@ -34,6 +35,7 @@ func TestLeaderMethodsThatPanic(t *testing.T) {
 	// Initialize server state and leader
 	l := new(leaderRole)
 	s := new(serverState)
+	l.appendResults = new(list.List)
 
 	// Test appendEntry
 	appendEntry := func() {
@@ -58,6 +60,7 @@ func TestLeaderMakeCandidate(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
 	s := MakeLeaderServerState()
+	l.appendResults = new(list.List)
 
 	// makeCandidate always returns false
 	success := l.makeCandidate(time.Millisecond, s)
@@ -70,6 +73,7 @@ func TestLeaderPrepareAppend(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
 	s := MakeLeaderServerState()
+	l.appendResults = new(list.List)
 
 	// Store initial term
 	initialTerm := s.currentTerm()
@@ -127,6 +131,7 @@ func TestLeaderRequestVote(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
 	s := MakeLeaderServerState()
+	l.appendResults = new(list.List)
 
 	// Store initial term
 	initialTerm := s.currentTerm()

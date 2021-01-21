@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// raftService implements the AbstractRaftService interface
 type raftService struct {
 	sync.Mutex
 	state         *serverState
@@ -45,15 +46,11 @@ func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	return s.state.currentTerm(), 0
 }
 
-func (s *raftService) makeFollower(leaderTerm int64) {
+func (s *raftService) makeFollower(leaderTerm int64, leaderID int64) {
 	s.Lock()
 	defer s.Unlock()
 
-	term := s.state.currentTerm()
-	if term < leaderTerm {
-		s.state.updateTerm(leaderTerm)
-		s.state.role = follower
-	}
+	s.roles[s.state.role].prepareAppend(leaderTerm, leaderID, s.state)
 }
 
 func (s *raftService) lastModified() time.Time {
@@ -63,6 +60,16 @@ func (s *raftService) lastModified() time.Time {
 
 	// Return time of last modification
 	return s.state.lastModified
+}
+
+func (s *raftService) notifyAppendEntrySuccess(
+	serverTerm int64, matchIndex int64, remoteServerID int64) {
+	// Lock access to server state
+	s.Lock()
+	defer s.Unlock()
+
+	s.roles[s.state.role].notifyAppendEntrySuccess(serverTerm, matchIndex,
+		remoteServerID, s.state)
 }
 
 // RequestVote implements the RequestVote RPC call

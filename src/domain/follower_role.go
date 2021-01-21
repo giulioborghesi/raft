@@ -52,6 +52,10 @@ func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
 	return true
 }
 
+func (f *followerRole) notifyAppendEntrySuccess(_, _, _ int64) {
+	return
+}
+
 func (f *followerRole) prepareAppend(serverTerm int64, serverID int64,
 	s *serverState) bool {
 	// Get current term

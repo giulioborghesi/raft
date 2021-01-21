@@ -19,7 +19,11 @@ type AbstractRaftService interface {
 
 	// makeFollower changes the server role to follower if the term argument
 	// exceeds the current term
-	makeFollower(int64)
+	makeFollower(int64, int64)
+
+	// notifyAppendEntrySuccess is called by entry replicators to notify the
+	// Raft service that previously issued AppendEntry RPC have succeeded
+	notifyAppendEntrySuccess(int64, int64, int64)
 
 	// RequestVote is the abstract method called by the RequestVote RPC call
 	RequestVote(remoteServerTerm int64, remoteServerID int64) (int64, bool)

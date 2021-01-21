@@ -12,6 +12,7 @@ const (
 	candidate
 
 	invalidLeaderID = 0
+	invalidServerID = -1
 	invalidTermID   = -1
 )
 
@@ -36,6 +37,7 @@ type serverState struct {
 	dao          server_state_dao.ServerStateDao
 	lastModified time.Time
 	role         int
+	commitIndex  int64
 	serverID     int64
 	leaderID     int64
 }

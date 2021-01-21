@@ -72,6 +72,10 @@ func (c *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
 	return true
 }
 
+func (c *candidateRole) notifyAppendEntrySuccess(_, _, _ int64) {
+	return
+}
+
 func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
 	s *serverState) bool {
 	// Get current term
