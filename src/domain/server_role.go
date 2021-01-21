@@ -24,6 +24,10 @@ type serverRole interface {
 	// makeCandidate implements the role transition logic to candidate
 	makeCandidate(time.Duration, *serverState) bool
 
+	// notifyAppendEntrySuccess is called by the entry appender to notify the
+	// Raft service that an AppendEntry RPC call has succeeded
+	notifyAppendEntrySuccess(int64, int64, int64, *serverState)
+
 	// prepareAppend prepares the server to respond to an AppendEntry RPC: it
 	// changes the server role to follower and updates the server term and
 	// leader ID if applicable

@@ -11,16 +11,21 @@ var (
 	entryAppenderTimeout time.Duration = 50 * time.Millisecond
 )
 
-type abstractEntryAppender interface {
+// abstractEntryReplicator defines an interface for replicating local log
+// entries in a remote server
+type abstractEntryReplicator interface {
+	// appendEntry replicates the log entry with the specified index and log
+	// entry term in the remote server. The replication may be asynchronous
 	appendEntry(int64, int64)
-	start()
-	stop()
 }
 
-type entryAppender struct {
+// entryReplicator implements the abstractEntryReplicator interfaces.
+// Replication is conducted asynchronously to improve performance
+type entryReplicator struct {
 	active                                     bool
 	matchIndex, nextIndex, logNextIndex        int64
 	appendTerm, lastAppendTerm, lastLeaderTerm int64
+	remoteServerID                             int64
 
 	done    chan bool
 	client  clients.AbstractRaftClient
@@ -28,7 +33,22 @@ type entryAppender struct {
 	sync.Cond
 }
 
-func (a *entryAppender) appendEntry(appendTerm int64,
+// MakeEntryReplicator creates an instance of entryAppender. appendTerm will be
+// initialized with an invalid term ID to ensure that log entries starts to be
+// replicated only after receiving a signal from the current leader
+func MakeEntryReplicator(replicatorID int64, remoteServerID int64,
+	c clients.AbstractRaftClient, s AbstractRaftService) *entryReplicator {
+	// Create entry appender and initialize appendTerm to invalid
+	a := &entryReplicator{active: false, client: c, service: s,
+		remoteServerID: remoteServerID}
+	a.appendTerm = invalidTermID
+
+	// Activate entry appender and return
+	a.start()
+	return a
+}
+
+func (a *entryReplicator) appendEntry(appendTerm int64,
 	logNextIndex int64) {
 	a.L.Lock()
 	defer a.L.Unlock()
@@ -38,7 +58,8 @@ func (a *entryAppender) appendEntry(appendTerm int64,
 	a.Signal()
 }
 
-func (a *entryAppender) processEntries() {
+// processEntries replicates log entries on the remote server asynchronously.
+func (a *entryReplicator) processEntries() {
 	for a.active {
 		a.L.Lock()
 
@@ -69,13 +90,16 @@ func (a *entryAppender) processEntries() {
 		}
 
 		// Send the log entries to the remote server
-		a.sendEntries(a.matchIndex, prevEntryTerm, entries)
+		if ok := a.sendEntries(a.matchIndex, prevEntryTerm, entries); ok {
+			a.service.notifyAppendEntrySuccess(appendTerm, a.matchIndex,
+				a.remoteServerID)
+		}
 	}
 }
 
 // updateMatchIndex finds the match index. This method performs non-trivial
 // work only when the current term exceeds the last known term
-func (a *entryAppender) updateMatchIndex(appendTerm int64,
+func (a *entryReplicator) updateMatchIndex(appendTerm int64,
 	logNextIndex int64) bool {
 	// Append term did not change from last append, nothing to do
 	if appendTerm == a.lastAppendTerm {
@@ -107,14 +131,14 @@ func (a *entryAppender) updateMatchIndex(appendTerm int64,
 	return true
 }
 
-func (a *entryAppender) resetState(appendTerm int64, nextIndex int64) {
+func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
 	a.lastAppendTerm = appendTerm
 	a.lastLeaderTerm = a.lastAppendTerm
 	a.matchIndex = 0
 	a.nextIndex = nextIndex
 }
 
-func (a *entryAppender) sendEntries(prevEntryTerm int64,
+func (a *entryReplicator) sendEntries(prevEntryTerm int64,
 	prevEntryIndex int64, entries []byte) bool {
 	// Send entries to remote server
 	remoteTerm, success := a.client.AppendEntry(a.lastAppendTerm,
@@ -136,7 +160,7 @@ func (a *entryAppender) sendEntries(prevEntryTerm int64,
 	return true
 }
 
-func (a *entryAppender) start() {
+func (a *entryReplicator) start() {
 	a.L.Lock()
 	defer a.L.Unlock()
 
@@ -157,7 +181,7 @@ func (a *entryAppender) start() {
 	}()
 }
 
-func (a *entryAppender) stop() {
+func (a *entryReplicator) stop() {
 	a.L.Lock()
 	defer a.L.Unlock()
 
@@ -171,7 +195,7 @@ func (a *entryAppender) stop() {
 	<-a.done
 }
 
-func (a *entryAppender) updateLeaderTerm(newLeaderTerm int64) {
+func (a *entryReplicator) updateLeaderTerm(newLeaderTerm int64) {
 	a.lastLeaderTerm = newLeaderTerm
-	a.service.makeFollower(newLeaderTerm)
+	a.service.makeFollower(newLeaderTerm, a.remoteServerID)
 }

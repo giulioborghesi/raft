@@ -1,15 +1,37 @@
 package domain
 
 import (
+	"container/list"
 	"fmt"
 	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
 	leaderErrMultFmt = "multiple leaders in the same term detected"
 )
 
-type leaderRole struct{}
+// computeCommitIndex computes the maximum index for which at least
+// half plus one of the servers has that log entry
+func computeCommitIndex(matchIndices []int64, s *serverState) int64 {
+	// Make a copy of the match indices
+	indices := []int64{}
+	copy(indices, matchIndices)
+
+	// Update match index of local server and sort the resulting slice
+	utils.SortInt64List(indices)
+
+	// Return index corresponding to half minus one of the servers
+	k := (len(indices) - 1) / 2
+	return indices[k]
+}
+
+type leaderRole struct {
+	appenders     []abstractEntryReplicator
+	appendResults *list.List
+	matchIndices  []int64
+}
 
 func (l *leaderRole) appendEntry(serverTerm int64,
 	serverID int64, s *serverState) (int64, bool) {
@@ -26,6 +48,47 @@ func (l *leaderRole) makeCandidate(_ time.Duration, s *serverState) bool {
 	return false
 }
 
+func (l *leaderRole) makeFollower(serverTerm int64, serverID int64,
+	leaderID int64, s *serverState) {
+	// Pending append entries request must return false
+	for l.appendResults.Len() > 0 {
+		front := l.appendResults.Front()
+		front.Value.(appendEntryResult).success <- false
+		l.appendResults.Remove(front)
+	}
+
+	// Update server state
+	s.role = follower
+	s.updateTermVotedFor(serverTerm, serverID)
+	s.leaderID = leaderID
+	s.lastModified = time.Now()
+}
+
+func (l *leaderRole) notifyAppendEntrySuccess(serverTerm int64,
+	matchIndex int64, remoteServerID int64, s *serverState) {
+	if s.currentTerm() != serverTerm {
+		return
+	}
+
+	// Update match index and compute new commit index
+	l.matchIndices[remoteServerID] = matchIndex
+	newCommitIndex := computeCommitIndex(l.matchIndices, s)
+
+	// TODO: advance local commit index
+	s.commitIndex = newCommitIndex
+
+	// Notify waiting clients
+	for l.appendResults.Len() > 0 {
+		entry := l.appendResults.Front()
+		result := entry.Value.(appendEntryResult)
+		if result.index > newCommitIndex {
+			break
+		}
+		result.success <- true
+		l.appendResults.Remove(entry)
+	}
+}
+
 func (l *leaderRole) prepareAppend(serverTerm int64, serverID int64,
 	s *serverState) bool {
 	// Get current term
@@ -40,10 +103,7 @@ func (l *leaderRole) prepareAppend(serverTerm int64, serverID int64,
 	}
 
 	// Request received from new leader, transition to follower
-	s.role = follower
-	s.updateTerm(serverTerm)
-	s.leaderID = serverID
-	s.lastModified = time.Now()
+	l.makeFollower(serverTerm, invalidServerID, serverID, s)
 	return true
 }
 
@@ -56,10 +116,7 @@ func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
 	}
 
 	// Server term greater than local term, cast vote and become follower
-	s.role = follower
-	s.updateTermVotedFor(serverTerm, serverID)
-	s.leaderID = invalidLeaderID
-	s.lastModified = time.Now()
+	l.makeFollower(serverTerm, serverID, invalidLeaderID, s)
 	return serverTerm, true
 }
 
