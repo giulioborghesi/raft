@@ -38,7 +38,7 @@ func TestCandidateMethodsThatPanic(t *testing.T) {
 
 	// Test finalizeElection
 	appendEntry := func() {
-		c.appendEntry(nil, 0, 0, 0, 0, s)
+		c.appendEntry(nil, 0, 0, 0, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntry)
 }

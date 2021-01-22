@@ -14,7 +14,7 @@ const (
 type followerRole struct{}
 
 func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
-	prevLogTerm, prevLogIndex int64, s *serverState) (int64, bool) {
+	prevLogTerm, prevLogIndex int64, commitIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm != serverTerm {

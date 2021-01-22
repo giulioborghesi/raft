@@ -55,7 +55,7 @@ func TestFollowerAppendEntry(t *testing.T) {
 
 	// Call to appendEntry should succeed
 	serverTerm := s.currentTerm()
-	actualterm, ok := f.appendEntry(nil, serverTerm, s.leaderID, 0, 0, s)
+	actualterm, ok := f.appendEntry(nil, serverTerm, s.leaderID, 0, 0, 0, s)
 	if actualterm != serverTerm {
 		t.Errorf("wrong term following appendEntry: expected %d, actual %d",
 			serverTerm, actualterm)
@@ -67,13 +67,13 @@ func TestFollowerAppendEntry(t *testing.T) {
 
 	// Server term different from local value, appendEntry should panic
 	appendEntryInvalidTerm := func() {
-		f.appendEntry(nil, serverTerm+1, s.leaderID, 0, 0, s)
+		f.appendEntry(nil, serverTerm+1, s.leaderID, 0, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntryInvalidTerm)
 
 	// Leader ID different from local value, appendEntry should panic
 	appendEntryInvalidLeaderID := func() {
-		f.appendEntry(nil, serverTerm, s.leaderID+1, 0, 0, s)
+		f.appendEntry(nil, serverTerm, s.leaderID+1, 0, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntryInvalidLeaderID)
 }
