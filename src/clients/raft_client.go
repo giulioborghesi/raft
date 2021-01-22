@@ -35,11 +35,12 @@ type raftClient struct {
 	serverID int64
 }
 
-func (c *raftClient) AppendEntry(serverTerm int64,
-	logEntryTerm int64, logEntryIndex int64) (int64, bool) {
+func (c *raftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
+	prevEntryIndex int64) (int64, bool) {
 	// Create RPC request
 	request := &service.AppendEntryRequest{ServerTerm: serverTerm,
-		ServerID: c.serverID}
+		ServerID: c.serverID, PrevEntryTerm: prevEntryTerm,
+		PrevEntryIndex: prevEntryIndex}
 
 	// On error, request is retried using exponential back-off algorithm
 	count := 0

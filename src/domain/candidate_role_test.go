@@ -68,5 +68,4 @@ func TestCandidateMakeCandidate(t *testing.T) {
 		t.Fatalf(fmt.Sprintf("invalid voted for: "+
 			"expected: %d, actual: %d", testCandidateServerID, votedFor))
 	}
-
 }
