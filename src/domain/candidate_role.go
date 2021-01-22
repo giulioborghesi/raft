@@ -11,11 +11,12 @@ const (
 	candidateErrFmt = "%s should not be called when a server is a candidate"
 )
 
+// candidateRole implements the serverRole interface for a candidate server
 type candidateRole struct {
 	voteRequestorMaker func() voteRequestor
 }
 
-func (c *candidateRole) appendEntry(serverTerm int64, serverID int64,
+func (c *candidateRole) appendEntry(_, _, _, _ int64,
 	s *serverState) (int64, bool) {
 	panic(fmt.Sprintf(candidateErrFmt, "appendEntry"))
 }
@@ -46,10 +47,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	// A remote server has a term greater than local term, transition to
 	// follower
 	if maxTerm > s.currentTerm() {
-		s.role = follower
-		s.updateTerm(maxTerm)
-		s.leaderID = invalidLeaderID
-		s.lastModified = time.Now()
+		s.updateServerState(follower, maxTerm, invalidServerID, invalidServerID)
 		return
 	}
 
@@ -63,17 +61,10 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 }
 
 func (c *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {
-	// Get current term
-	currentTerm := s.currentTerm()
-
-	// Update term, voted for and last modified. Leader ID already nil
-	s.updateTermVotedFor(currentTerm+1, s.serverID)
-	s.lastModified = time.Now()
+	// Get new term and update server state
+	newTerm := s.currentTerm() + 1
+	s.updateServerState(candidate, newTerm, s.serverID, invalidServerID)
 	return true
-}
-
-func (c *candidateRole) notifyAppendEntrySuccess(_, _, _ int64) {
-	return
 }
 
 func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
@@ -86,12 +77,13 @@ func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
 		return false
 	}
 
-	// Change role to follower, update term and last modified
-	s.role = follower
-	s.updateTerm(serverTerm)
-	s.leaderID = serverID
-	s.lastModified = time.Now()
+	// Update server state and return
+	s.updateServerState(follower, serverTerm, invalidServerID, serverID)
 	return true
+}
+
+func (c *candidateRole) processAppendEntryEvent(_, _, _ int64,
+	_ *serverState) {
 }
 
 func (c *candidateRole) requestVote(serverTerm int64,
@@ -102,11 +94,8 @@ func (c *candidateRole) requestVote(serverTerm int64,
 		return currentTerm, false
 	}
 
-	// Remote server has a term higher than current one, cast vote and convert
-	// to follower
-	s.role = follower
-	s.updateTermVotedFor(serverTerm, serverID)
-	s.lastModified = time.Now()
+	// Remote server has a term higher than current one, update server state
+	s.updateServerState(follower, serverTerm, serverID, invalidServerID)
 	return serverTerm, true
 }
 

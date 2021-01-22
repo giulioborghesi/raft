@@ -39,7 +39,7 @@ func TestLeaderMethodsThatPanic(t *testing.T) {
 
 	// Test appendEntry
 	appendEntry := func() {
-		l.appendEntry(0, 0, s)
+		l.appendEntry(0, 0, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntry)
 
@@ -170,9 +170,9 @@ func TestLeaderRequestVote(t *testing.T) {
 		t.Fatalf("server did not transition to follower role")
 	}
 
-	if s.leaderID != invalidLeaderID {
+	if s.leaderID != invalidServerID {
 		t.Fatalf("invalid leader ID: expected: %d, actual: %d",
-			invalidLeaderID, s.leaderID)
+			invalidServerID, s.leaderID)
 	}
 
 	if !success {

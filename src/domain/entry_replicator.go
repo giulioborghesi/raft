@@ -90,8 +90,9 @@ func (a *entryReplicator) processEntries() {
 		}
 
 		// Send the log entries to the remote server
-		if ok := a.sendEntries(a.matchIndex, prevEntryTerm, entries); ok {
-			a.service.notifyAppendEntrySuccess(appendTerm, a.matchIndex,
+		if ok := a.sendEntries(a.matchIndex, prevEntryTerm,
+			entries); ok {
+			a.service.processAppendEntryEvent(appendTerm, a.matchIndex,
 				a.remoteServerID)
 		}
 	}
@@ -141,8 +142,8 @@ func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
 func (a *entryReplicator) sendEntries(prevEntryTerm int64,
 	prevEntryIndex int64, entries []byte) bool {
 	// Send entries to remote server
-	remoteTerm, success := a.client.AppendEntry(a.lastAppendTerm,
-		prevEntryTerm, prevEntryIndex)
+	remoteTerm, success :=
+		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex)
 
 	// Remote server term greater than local term, return
 	if remoteTerm > a.lastAppendTerm {
@@ -197,5 +198,6 @@ func (a *entryReplicator) stop() {
 
 func (a *entryReplicator) updateLeaderTerm(newLeaderTerm int64) {
 	a.lastLeaderTerm = newLeaderTerm
-	a.service.makeFollower(newLeaderTerm, a.remoteServerID)
+	a.service.processAppendEntryEvent(newLeaderTerm, invalidLogID,
+		invalidServerID)
 }

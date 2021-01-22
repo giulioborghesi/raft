@@ -25,6 +25,7 @@ func MakeFollowerServerState() *serverState {
 
 	s := new(serverState)
 	s.dao = dao
+	s.log = &mockRaftLog{value: true}
 	s.leaderID = testFollowerLeaderID
 	return s
 }
@@ -52,9 +53,9 @@ func TestFollowerAppendEntry(t *testing.T) {
 	f := new(followerRole)
 	s := MakeFollowerServerState()
 
-	// Call toppendEntry should succeed
+	// Call to appendEntry should succeed
 	serverTerm := s.currentTerm()
-	actualterm, ok := f.appendEntry(serverTerm, s.leaderID, s)
+	actualterm, ok := f.appendEntry(serverTerm, s.leaderID, 0, 0, s)
 	if actualterm != serverTerm {
 		t.Errorf("wrong term following appendEntry: expected %d, actual %d",
 			serverTerm, actualterm)
@@ -66,13 +67,13 @@ func TestFollowerAppendEntry(t *testing.T) {
 
 	// Server term different from local value, appendEntry should panic
 	appendEntryInvalidTerm := func() {
-		f.appendEntry(serverTerm+1, s.leaderID, s)
+		f.appendEntry(serverTerm+1, s.leaderID, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntryInvalidTerm)
 
 	// Leader ID different from local value, appendEntry should panic
 	appendEntryInvalidLeaderID := func() {
-		f.appendEntry(serverTerm, s.leaderID+1, s)
+		f.appendEntry(serverTerm, s.leaderID+1, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntryInvalidLeaderID)
 }
@@ -201,7 +202,7 @@ func TestFollowerRequestVote(t *testing.T) {
 	}
 
 	// Server did not vote yet, grant vote and return true
-	s.updateVotedFor(invalidLeaderID)
+	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID, s)
 
 	if s.currentTerm() != initialTerm && currentTerm != initialTerm {
@@ -226,7 +227,7 @@ func TestFollowerRequestVote(t *testing.T) {
 
 	// Server term exceeds local term, vote will be granted
 	serverTerm += 1
-	s.updateVotedFor(invalidLeaderID)
+	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID, s)
 	if s.currentTerm() != serverTerm && currentTerm != serverTerm {
 		t.Fatalf("invalid term returned by requestVote: "+
@@ -243,8 +244,8 @@ func TestFollowerRequestVote(t *testing.T) {
 			"expected: %d, actual: %d", testFollowerLeaderID, votedForID)
 	}
 
-	if s.leaderID != invalidLeaderID {
+	if s.leaderID != invalidServerID {
 		t.Fatalf("invalid leader ID following requestVote: "+
-			"expected: %d, actual: %d", invalidLeaderID, s.leaderID)
+			"expected: %d, actual: %d", invalidServerID, s.leaderID)
 	}
 }
