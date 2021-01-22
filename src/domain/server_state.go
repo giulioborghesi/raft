@@ -11,7 +11,7 @@ const (
 	leader
 	candidate
 
-	invalidLeaderID = 0
+	invalidLogID    = -1
 	invalidServerID = -1
 	invalidTermID   = -1
 )
@@ -32,9 +32,10 @@ func getServerState() *serverState {
 	return uniqueServerState
 }
 
-// serverState represents the state of a Raft server
+// serverState encapsulates the state of a Raft server
 type serverState struct {
 	dao          server_state_dao.ServerStateDao
+	log          abstractRaftLog
 	lastModified time.Time
 	role         int
 	commitIndex  int64
@@ -73,4 +74,14 @@ func (s *serverState) updateVotedFor(serverID int64) {
 // this server's vote during this term
 func (s *serverState) votedFor() (int64, int64) {
 	return s.dao.VotedFor()
+}
+
+// updateServerState updates the server state according to the provided
+// parameters
+func (s *serverState) updateServerState(newRole int, newTerm int64,
+	newVotedFor int64, newLeaderID int64) {
+	s.role = newRole
+	s.updateTermVotedFor(newTerm, newVotedFor)
+	s.leaderID = newLeaderID
+	s.lastModified = time.Now()
 }

@@ -14,6 +14,8 @@ service Raft {
 message AppendEntryRequest {
     int64 serverTerm = 1;
     int64 serverID = 2;
+    int64 prevEntryTerm = 3;
+    int64 prevEntryIndex = 4;
 }
 
 message AppendEntryReply {

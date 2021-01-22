@@ -5,6 +5,37 @@ import (
 	"time"
 )
 
+// AbstractRaftService specifies the interface exposed by a type that
+// implements a Raft service. AbstractRaftService exposes public methods for
+// handling AppendEntry and RequestVote RPC calls, as well as non-public methods
+// to access and modify the server state
+type AbstractRaftService interface {
+	// AppendEntry handles an incoming AppendEntry RPC call
+	AppendEntry(int64, int64, int64, int64) (int64, bool)
+
+	// entryInfo returns the current leader term and the term of the log entry
+	// with the specified index
+	entryInfo(int64) (int64, int64)
+
+	// entries returns the log entries starting from the specified index, as
+	// well as the
+	entries(int64) ([]byte, int64, int64)
+
+	// lastModified returns the timestamp of last server update
+	lastModified() time.Time
+
+	// processAppendEntryEvent processes an event generated while trying to
+	// append a log entry to a remote server log
+	processAppendEntryEvent(int64, int64, int64)
+
+	// RequestVote handles an incoming RequestVote RPC call
+	RequestVote(remoteServerTerm int64, remoteServerID int64) (int64, bool)
+
+	// StartElection initiates an election if the time elapsed since the last
+	// server update exceeds the election timeout
+	StartElection(time.Duration)
+}
+
 // raftService implements the AbstractRaftService interface
 type raftService struct {
 	sync.Mutex
@@ -13,13 +44,8 @@ type raftService struct {
 	roles         map[int]serverRole
 }
 
-// AppendEntry implements the AppendEntry RPC call. Firstly, RaftService will
-// try changing the server state to follower, since only a follower can append
-// a log entry to its log. If the transition to follower is successful, the
-// service will then forward the request to the underlying server state object,
-// and return the result of the forwarding call to the invoking RPC handler
-func (s *raftService) AppendEntry(remoteServerTerm int64,
-	remoteServerID int64) (int64, bool) {
+func (s *raftService) AppendEntry(remoteServerTerm int64, remoteServerID int64,
+	prevLogTerm int64, prevLogIndex int64) (int64, bool) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
@@ -32,7 +58,7 @@ func (s *raftService) AppendEntry(remoteServerTerm int64,
 
 	// Append entry to log if possible
 	return s.roles[s.state.role].appendEntry(remoteServerTerm,
-		remoteServerID, s.state)
+		remoteServerID, prevLogTerm, prevLogIndex, s.state)
 }
 
 func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
@@ -46,13 +72,6 @@ func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	return s.state.currentTerm(), 0
 }
 
-func (s *raftService) makeFollower(leaderTerm int64, leaderID int64) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.roles[s.state.role].prepareAppend(leaderTerm, leaderID, s.state)
-}
-
 func (s *raftService) lastModified() time.Time {
 	// Lock access to server state
 	s.Lock()
@@ -62,14 +81,14 @@ func (s *raftService) lastModified() time.Time {
 	return s.state.lastModified
 }
 
-func (s *raftService) notifyAppendEntrySuccess(
-	serverTerm int64, matchIndex int64, remoteServerID int64) {
+func (s *raftService) processAppendEntryEvent(
+	serverTerm int64, matchIndex int64, serverID int64) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
 
-	s.roles[s.state.role].notifyAppendEntrySuccess(serverTerm, matchIndex,
-		remoteServerID, s.state)
+	s.roles[s.state.role].processAppendEntryEvent(serverTerm, matchIndex,
+		serverID, s.state)
 }
 
 // RequestVote implements the RequestVote RPC call
