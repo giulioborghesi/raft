@@ -34,7 +34,7 @@ type leaderRole struct {
 	matchIndices  []int64
 }
 
-func (l *leaderRole) appendEntry(_, _, _, _ int64,
+func (l *leaderRole) appendEntry(_ []*logEntry, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "leader"))
 }

@@ -11,7 +11,7 @@ import (
 // to access and modify the server state
 type AbstractRaftService interface {
 	// AppendEntry handles an incoming AppendEntry RPC call
-	AppendEntry(int64, int64, int64, int64) (int64, bool)
+	AppendEntry([]*logEntry, int64, int64, int64, int64) (int64, bool)
 
 	// entryInfo returns the current leader term and the term of the log entry
 	// with the specified index
@@ -44,21 +44,21 @@ type raftService struct {
 	roles         map[int]serverRole
 }
 
-func (s *raftService) AppendEntry(remoteServerTerm int64, remoteServerID int64,
-	prevLogTerm int64, prevLogIndex int64) (int64, bool) {
+func (s *raftService) AppendEntry(entries []*logEntry, serverTerm int64,
+	serverID int64, prevLogTerm int64, prevLogIndex int64) (int64, bool) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
 
 	// Only a follower can respond to an AppendEntry request
-	if ok := s.roles[s.state.role].prepareAppend(remoteServerTerm,
-		remoteServerID, s.state); !ok {
+	if ok := s.roles[s.state.role].prepareAppend(serverTerm,
+		serverID, s.state); !ok {
 		return s.state.currentTerm(), false
 	}
 
 	// Append entry to log if possible
-	return s.roles[s.state.role].appendEntry(remoteServerTerm,
-		remoteServerID, prevLogTerm, prevLogIndex, s.state)
+	return s.roles[s.state.role].appendEntry(entries, serverTerm,
+		serverID, prevLogTerm, prevLogIndex, s.state)
 }
 
 func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {

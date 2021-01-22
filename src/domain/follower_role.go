@@ -13,8 +13,8 @@ const (
 // followerRole implements the serverRole interface for a follower server
 type followerRole struct{}
 
-func (f *followerRole) appendEntry(serverTerm, serverID, prevLogTerm,
-	prevLogIndex int64, s *serverState) (int64, bool) {
+func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
+	prevLogTerm, prevLogIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm != serverTerm {
@@ -27,7 +27,7 @@ func (f *followerRole) appendEntry(serverTerm, serverID, prevLogTerm,
 	}
 
 	// Try appending log entries to log
-	return currentTerm, s.log.appendEntries(prevLogTerm, prevLogIndex)
+	return currentTerm, s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
 }
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
