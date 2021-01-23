@@ -56,18 +56,14 @@ func (f *followerRole) prepareAppend(serverTerm int64, serverID int64,
 		return false
 	}
 
-	// Update term and leader ID if a new leader is detected
+	// If term changed, set votedFor to invalid server ID
+	_, votedFor := s.votedFor()
 	if currentTerm < serverTerm {
-		s.updateTerm(serverTerm)
-		s.leaderID = serverID
+		votedFor = invalidServerID
 	}
 
-	// If leader is known, it must be equal to serverID
-	if s.leaderID == invalidServerID {
-		s.leaderID = serverID
-	} else if s.leaderID != serverID {
-		panic(fmt.Sprintf(followerErrIdFmt, s.leaderID, serverID))
-	}
+	// Update server state and return
+	s.updateServerState(follower, serverTerm, votedFor, serverID)
 	return true
 }
 

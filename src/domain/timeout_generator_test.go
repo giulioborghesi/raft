@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -22,9 +21,7 @@ func lastModified() time.Time {
 }
 
 func timeOutHandler(time.Duration) {
-	fmt.Println("Called!")
 	count++
-	fmt.Println(count)
 }
 
 func TestRandomDuration(t *testing.T) {
