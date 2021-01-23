@@ -13,7 +13,7 @@ const (
 
 // candidateRole implements the serverRole interface for a candidate server
 type candidateRole struct {
-	voteRequestorMaker func() abstractVoteRequestor
+	voteRequestors []abstractVoteRequestor
 }
 
 func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
@@ -104,25 +104,24 @@ func (c *candidateRole) sendHeartbeat(_ time.Duration, _ *serverState) {
 	return
 }
 
-func (c *candidateRole) startElection(servers []string,
+func (c *candidateRole) startElection(
 	s *serverState) []chan requestVoteResult {
 	candidateTerm := s.currentTerm()
 	candidateID := s.serverID
 
-	// Request a vote from each server asynchronously
-	results := make([]chan requestVoteResult, 0, len(servers))
-	for _, server := range servers {
-		// Create vote requestor
-		r := c.voteRequestorMaker()
+	results := make([]chan requestVoteResult, 0)
+	for i := 0; i < len(c.voteRequestors); i++ {
+		// Fetch vote requestor and prepare channel to save result
 		result := make(chan requestVoteResult)
+		voteRequestor := c.voteRequestors[i]
 
-		// Request vote from server asynchronously
-		localServer := server
+		// Send vote request asynchronously
 		go func() {
-			result <- r.requestVote(localServer,
-				candidateTerm, candidateID)
+			result <- voteRequestor.requestVote(candidateTerm, candidateID)
 		}()
-		results = append(results, result)
+
+		// Append result to output list
+		results = append(results)
 	}
 
 	// Return slice of results for each remote server

@@ -4,15 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/giulioborghesi/raft-implementation/src/service"
-	"google.golang.org/grpc"
+	"github.com/giulioborghesi/raft-implementation/src/clients"
 )
 
 const (
 	maxCallDuration = time.Millisecond * 100
 )
 
-// requestVoteResult is a struct used to store the result a requestVote RPC
+// requestVoteResult is a struct used to return the result a requestVote RPC
 // call to a remote server
 type requestVoteResult struct {
 	success    bool
@@ -20,46 +19,33 @@ type requestVoteResult struct {
 	err        error
 }
 
-// abstractVoteRequestor defines the interface of an object to be used for
-// requesting a vote from a remote server
+// abstractVoteRequestor defines the interface of the object used for
+// requesting a vote from a remote server. The recipient of a vote
+// request should be binded to the requestor during object initialization
 type abstractVoteRequestor interface {
-	// requestVote sends a vote request to the remote server at the address
-	// specified by the string argument
-	requestVote(string, int64, int64) requestVoteResult
+	// requestVote sends a vote request to a remote server
+	requestVote(int64, int64) requestVoteResult
 }
 
-// voteRequestor implements the voteRequestor interface using gRPC
+// makeVoteRequestor creates an object of type voteRequestor, intialized with a
+// provided client, and returns a pointer to it to the caller
+func makeVoteRequestor(c clients.AbstractRaftClient) abstractVoteRequestor {
+	return &voteRequestor{client: c}
+}
+
+// voteRequestor implements the abstractVoteRequestor interface. voteRequestor
+// delegates most of the implementation details to a client class; its
+// responsibility is limited to marshalling / unmarshalling the input / output
 type voteRequestor struct {
-	dialOptions []grpc.DialOption
+	client clients.AbstractRaftClient
 }
 
-func (v *voteRequestor) requestVote(address string, serverTerm int64,
+func (v *voteRequestor) requestVote(serverTerm int64,
 	serverID int64) requestVoteResult {
-	// Prepare gRPC call arguments
-	request := new(service.RequestVoteRequest)
-	request.ServerTerm = serverTerm
-	request.ServerID = serverID
-
-	// Create a connection context with a deadline
 	d := time.Now().Add(maxCallDuration)
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
 
-	// Connect to remote server
-	conn, err := grpc.DialContext(ctx, address, v.dialOptions...)
-	if err != nil {
-		return requestVoteResult{err: err}
-	}
-	defer conn.Close()
-
-	// Create gRPC client and send vote request to remote server
-	c := service.NewRaftClient(conn)
-	result, err := c.RequestVote(ctx, request)
-	if err != nil {
-		return requestVoteResult{err: err}
-	}
-
-	// requestVote RPC was successful, return result to caller
-	return requestVoteResult{success: result.Success,
-		serverTerm: result.ServerTerm, err: nil}
+	serverTerm, success, err := v.client.RequestVote(ctx, serverTerm, serverID)
+	return requestVoteResult{success: success, serverTerm: serverTerm, err: err}
 }

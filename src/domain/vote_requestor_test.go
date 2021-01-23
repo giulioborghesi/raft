@@ -1,5 +1,6 @@
 package domain
 
+/*
 import (
 	"context"
 	"log"
@@ -101,3 +102,4 @@ func TestVoteRequestRPCTimeout(t *testing.T) {
 			"expected: %d, actual %d", codes.DeadlineExceeded, int(errcode))
 	}
 }
+*/

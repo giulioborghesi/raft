@@ -45,9 +45,8 @@ type AbstractRaftService interface {
 // raftService implements the AbstractRaftService interface
 type raftService struct {
 	sync.Mutex
-	state         *serverState
-	remoteServers []string
-	roles         map[int]serverRole
+	state *serverState
+	roles map[int]serverRole
 }
 
 func (s *raftService) AppendEntry(entries []*service.LogEntry,
@@ -137,8 +136,7 @@ func (s *raftService) StartElection(to time.Duration) {
 	electionTerm := s.state.currentTerm()
 
 	// Request votes asynchronously from remote servers
-	asyncResults := s.roles[s.state.role].startElection(s.remoteServers,
-		s.state)
+	asyncResults := s.roles[s.state.role].startElection(s.state)
 	s.Unlock()
 
 	// Wait for RPC calls to complete (or fail due to timeout)
