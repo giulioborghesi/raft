@@ -12,7 +12,7 @@ const (
 
 // leaderRole implements the serverRole interface for a leader server
 type leaderRole struct {
-	appenders     []abstractEntryReplicator
+	replicators   []abstractEntryReplicator
 	appendResults *list.List
 	matchIndices  []int64
 }
@@ -78,6 +78,23 @@ func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
 	// Server term greater than local term, cast vote and become follower
 	s.updateServerState(follower, serverTerm, serverID, invalidServerID)
 	return serverTerm, true
+}
+
+// sendEntries notifies the entry replicator about the new log entries to
+// append to the remote server log
+func (l *leaderRole) sendEntries(appendTerm int64, logNextIndex int64,
+	commitIndex int64) {
+	for _, replicator := range l.replicators {
+		replicator.appendEntry(appendTerm, logNextIndex, commitIndex)
+	}
+}
+
+func (l *leaderRole) sendHeartbeat(to time.Duration, s *serverState) {
+	d := time.Since(s.lastModified)
+	if d >= to {
+		l.sendEntries(s.currentTerm(), s.log.nextIndex(), s.commitIndex)
+		s.lastModified = time.Now()
+	}
 }
 
 func (l *leaderRole) startElection(servers []string,

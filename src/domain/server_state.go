@@ -64,6 +64,16 @@ func (s *serverState) updateCommitIndex(matchIndices []int64) {
 	s.commitIndex = utils.MaxInt64(s.commitIndex, indices[k])
 }
 
+// updateServerState updates the server state according to the provided
+// parameters
+func (s *serverState) updateServerState(newRole int, newTerm int64,
+	newVotedFor int64, newLeaderID int64) {
+	s.role = newRole
+	s.updateTermVotedFor(newTerm, newVotedFor)
+	s.leaderID = newLeaderID
+	s.lastModified = time.Now()
+}
+
 func (s *serverState) updateTerm(serverTerm int64) {
 	if err := s.dao.UpdateTerm(serverTerm); err != nil {
 		panic(err)
@@ -90,14 +100,4 @@ func (s *serverState) updateVotedFor(serverID int64) {
 // this server's vote during this term
 func (s *serverState) votedFor() (int64, int64) {
 	return s.dao.VotedFor()
-}
-
-// updateServerState updates the server state according to the provided
-// parameters
-func (s *serverState) updateServerState(newRole int, newTerm int64,
-	newVotedFor int64, newLeaderID int64) {
-	s.role = newRole
-	s.updateTermVotedFor(newTerm, newVotedFor)
-	s.leaderID = newLeaderID
-	s.lastModified = time.Now()
 }

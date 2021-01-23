@@ -100,6 +100,10 @@ func (c *candidateRole) requestVote(serverTerm int64,
 	return serverTerm, true
 }
 
+func (c *candidateRole) sendHeartbeat(_ time.Duration, _ *serverState) {
+	return
+}
+
 func (c *candidateRole) startElection(servers []string,
 	s *serverState) []chan requestVoteResult {
 	candidateTerm := s.currentTerm()
