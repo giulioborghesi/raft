@@ -72,7 +72,8 @@ func (f *followerRole) prepareAppend(serverTerm int64, serverID int64,
 }
 
 func (f *followerRole) processAppendEntryEvent(_, _, _ int64,
-	_ *serverState) {
+	_ *serverState) bool {
+	return false
 }
 
 func (f *followerRole) requestVote(serverTerm int64,

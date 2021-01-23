@@ -4,28 +4,11 @@ import (
 	"container/list"
 	"fmt"
 	"time"
-
-	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
 	leaderErrMultFmt = "multiple leaders in the same term detected"
 )
-
-// computeNewCommitIndex computes an estimate of the commit index from the
-// match indices of the remote servers
-func computeNewCommitIndex(matchIndices []int64) int64 {
-	// Make a copy of the match indices
-	indices := []int64{}
-	copy(indices, matchIndices)
-
-	// Update match index of local server and sort the resulting slice
-	utils.SortInt64List(indices)
-
-	// Return index corresponding to half minus one of the servers
-	k := (len(indices) - 1) / 2
-	return indices[k]
-}
 
 // leaderRole implements the serverRole interface for a leader server
 type leaderRole struct {
@@ -68,11 +51,12 @@ func (l *leaderRole) prepareAppend(serverTerm int64, serverID int64,
 }
 
 func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
-	matchIndex int64, serverID int64, s *serverState) (int64, bool) {
+	matchIndex int64, serverID int64, s *serverState) bool {
 	// Append entry succeeded and server term did not change
 	if appendTerm == s.currentTerm() && matchIndex != invalidLogID {
 		l.matchIndices[serverID] = matchIndex
-		return computeNewCommitIndex(l.matchIndices), true
+		s.updateCommitIndex(l.matchIndices)
+		return true
 	}
 
 	// Switch role to follower if a new term was detected
@@ -80,7 +64,7 @@ func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
 		s.updateServerState(follower, appendTerm, invalidServerID,
 			invalidServerID)
 	}
-	return invalidLogID, false
+	return false
 }
 
 func (l *leaderRole) requestVote(serverTerm int64, serverID int64,

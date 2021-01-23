@@ -83,7 +83,8 @@ func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
 }
 
 func (c *candidateRole) processAppendEntryEvent(_, _, _ int64,
-	_ *serverState) {
+	_ *serverState) bool {
+	return false
 }
 
 func (c *candidateRole) requestVote(serverTerm int64,

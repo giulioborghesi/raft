@@ -90,8 +90,7 @@ func (a *entryReplicator) processEntries() {
 		}
 
 		// Send the log entries to the remote server
-		if ok := a.sendEntries(a.matchIndex, prevEntryTerm,
-			entries); ok {
+		if ok := a.sendEntries(entries, a.matchIndex, prevEntryTerm); ok {
 			a.service.processAppendEntryEvent(appendTerm, a.matchIndex,
 				a.remoteServerID)
 		}
@@ -121,7 +120,7 @@ func (a *entryReplicator) updateMatchIndex(appendTerm int64,
 		}
 
 		// Send empty entry to remote server
-		if ok := a.sendEntries(prevEntryTerm, prevEntryIndex, nil); !ok {
+		if ok := a.sendEntries(nil, prevEntryTerm, prevEntryIndex); !ok {
 			return false
 		}
 
@@ -139,8 +138,8 @@ func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
 	a.nextIndex = nextIndex
 }
 
-func (a *entryReplicator) sendEntries(prevEntryTerm int64,
-	prevEntryIndex int64, entries []byte) bool {
+func (a *entryReplicator) sendEntries(entries []*logEntry, prevEntryTerm int64,
+	prevEntryIndex int64) bool {
 	// Send entries to remote server
 	remoteTerm, success :=
 		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex)

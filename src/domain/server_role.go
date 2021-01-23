@@ -31,7 +31,7 @@ type serverRole interface {
 
 	// processAppendEntryEvent processes events generated while trying to
 	// append entries to the log of a remote server
-	processAppendEntryEvent(int64, int64, int64, *serverState)
+	processAppendEntryEvent(int64, int64, int64, *serverState) bool
 
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server or not

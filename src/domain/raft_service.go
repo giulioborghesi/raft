@@ -3,6 +3,8 @@ package domain
 import (
 	"sync"
 	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
 // AbstractRaftService specifies the interface exposed by a type that
@@ -11,15 +13,16 @@ import (
 // to access and modify the server state
 type AbstractRaftService interface {
 	// AppendEntry handles an incoming AppendEntry RPC call
-	AppendEntry([]*logEntry, int64, int64, int64, int64, int64) (int64, bool)
+	AppendEntry([]*service.LogEntry, int64, int64, int64, int64,
+		int64) (int64, bool)
 
 	// entryInfo returns the current leader term and the term of the log entry
 	// with the specified index
 	entryInfo(int64) (int64, int64)
 
-	// entries returns the log entries starting from the specified index, as
-	// well as the
-	entries(int64) ([]byte, int64, int64)
+	// entries returns a slice of the log entries starting from the specified
+	// index, together with the current term and the previous entry term
+	entries(int64) ([]*logEntry, int64, int64)
 
 	// lastModified returns the timestamp of last server update
 	lastModified() time.Time
@@ -44,8 +47,8 @@ type raftService struct {
 	roles         map[int]serverRole
 }
 
-func (s *raftService) AppendEntry(entries []*logEntry, serverTerm int64,
-	serverID int64, prevLogTerm int64, prevLogIndex int64,
+func (s *raftService) AppendEntry(entries []*service.LogEntry,
+	serverTerm int64, serverID int64, prevLogTerm int64, prevLogIndex int64,
 	commitIndex int64) (int64, bool) {
 	// Lock access to server state
 	s.Lock()
@@ -57,8 +60,15 @@ func (s *raftService) AppendEntry(entries []*logEntry, serverTerm int64,
 		return s.state.currentTerm(), false
 	}
 
+	// Unrmarshall log entries
+	newEntries := make([]*logEntry, 0, len(entries))
+	for _, e := range entries {
+		newEntry := logEntry{entryTerm: e.EntryTerm, payload: e.Payload}
+		newEntries = append(newEntries, &newEntry)
+	}
+
 	// Append entry to log if possible
-	return s.roles[s.state.role].appendEntry(entries, serverTerm,
+	return s.roles[s.state.role].appendEntry(newEntries, serverTerm,
 		serverID, prevLogTerm, prevLogIndex, commitIndex, s.state)
 }
 
