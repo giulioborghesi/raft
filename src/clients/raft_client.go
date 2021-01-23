@@ -16,7 +16,7 @@ const (
 // AbstractRaftClient is a thin wrapper around around service.RaftClient. It
 // provides syntactic sugar to marshall / unmarshall RPC requests / responses
 type AbstractRaftClient interface {
-	AppendEntry(int64, int64, int64) (int64, bool)
+	AppendEntry(int64, int64, int64, int64) (int64, bool)
 }
 
 // MakeRaftClient creates a new Raft client given a RPC connection and the
@@ -36,11 +36,11 @@ type raftClient struct {
 }
 
 func (c *raftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
-	prevEntryIndex int64) (int64, bool) {
+	prevEntryIndex int64, commitIndex int64) (int64, bool) {
 	// Create RPC request
 	request := &service.AppendEntryRequest{ServerTerm: serverTerm,
 		ServerID: c.serverID, PrevEntryTerm: prevEntryTerm,
-		PrevEntryIndex: prevEntryIndex}
+		PrevEntryIndex: prevEntryIndex, CommitIndex: commitIndex}
 
 	// On error, request is retried using exponential back-off algorithm
 	count := 0

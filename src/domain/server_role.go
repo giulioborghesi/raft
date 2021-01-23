@@ -12,7 +12,8 @@ const (
 type serverRole interface {
 	// appendEntry implements the logic used to determine whether a server
 	// should append a log entry sent by the current leader to its log
-	appendEntry(int64, int64, int64, int64, *serverState) (int64, bool)
+	appendEntry([]*logEntry, int64, int64, int64, int64, int64,
+		*serverState) (int64, bool)
 
 	// finalizeElection processes the results of an election and handles the
 	// possible transitions from candidate state to either leader or follower
@@ -30,7 +31,7 @@ type serverRole interface {
 
 	// processAppendEntryEvent processes events generated while trying to
 	// append entries to the log of a remote server
-	processAppendEntryEvent(int64, int64, int64, *serverState)
+	processAppendEntryEvent(int64, int64, int64, *serverState) bool
 
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server or not

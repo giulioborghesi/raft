@@ -16,7 +16,7 @@ type candidateRole struct {
 	voteRequestorMaker func() voteRequestor
 }
 
-func (c *candidateRole) appendEntry(_, _, _, _ int64,
+func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
 	panic(fmt.Sprintf(candidateErrFmt, "appendEntry"))
 }
@@ -83,7 +83,8 @@ func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
 }
 
 func (c *candidateRole) processAppendEntryEvent(_, _, _ int64,
-	_ *serverState) {
+	_ *serverState) bool {
+	return false
 }
 
 func (c *candidateRole) requestVote(serverTerm int64,

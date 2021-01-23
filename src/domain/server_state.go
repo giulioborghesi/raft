@@ -4,6 +4,7 @@ import (
 	"time"
 
 	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
@@ -46,6 +47,21 @@ type serverState struct {
 // currentTerm returns the current term ID
 func (s *serverState) currentTerm() int64 {
 	return s.dao.CurrentTerm()
+}
+
+// updateCommitIndex computes the new commit index based on the match indices
+// of the remote servers
+func (s *serverState) updateCommitIndex(matchIndices []int64) {
+	// Make a copy of the match indices
+	indices := []int64{}
+	copy(indices, matchIndices)
+
+	// Update match index of local server and sort the resulting slice
+	utils.SortInt64List(indices)
+
+	// Return index corresponding to half minus one of the servers
+	k := (len(indices) - 1) / 2
+	s.commitIndex = utils.MaxInt64(s.commitIndex, indices[k])
 }
 
 func (s *serverState) updateTerm(serverTerm int64) {

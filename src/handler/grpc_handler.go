@@ -13,10 +13,10 @@ type RaftRPCHandler struct {
 }
 
 func (h *RaftRPCHandler) AppendEntry(ctx context.Context,
-	request *service.AppendEntryRequest) (*service.AppendEntryReply, error) {
+	r *service.AppendEntryRequest) (*service.AppendEntryReply, error) {
 	// Process AppendEntry request
-	currentTerm, success := h.raftService.AppendEntry(request.ServerTerm,
-		request.ServerID, request.PrevEntryTerm, request.PrevEntryIndex)
+	currentTerm, success := h.raftService.AppendEntry(r.Entries, r.ServerTerm,
+		r.ServerID, r.PrevEntryTerm, r.PrevEntryIndex, r.CommitIndex)
 
 	// Send reply to server
 	return &service.AppendEntryReply{Success: success,

@@ -39,7 +39,7 @@ func TestLeaderMethodsThatPanic(t *testing.T) {
 
 	// Test appendEntry
 	appendEntry := func() {
-		l.appendEntry(0, 0, 0, 0, s)
+		l.appendEntry(nil, 0, 0, 0, 0, 0, s)
 	}
 	utils.AssertPanic(t, "appendEntry", appendEntry)
 
