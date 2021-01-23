@@ -13,7 +13,7 @@ const (
 
 // candidateRole implements the serverRole interface for a candidate server
 type candidateRole struct {
-	voteRequestorMaker func() voteRequestor
+	voteRequestorMaker func() abstractVoteRequestor
 }
 
 func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,

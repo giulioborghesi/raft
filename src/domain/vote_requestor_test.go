@@ -58,7 +58,7 @@ func TestVoteRequestRPCSuccess(t *testing.T) {
 	// Create RPC client
 	options := []grpc.DialOption{grpc.WithContextDialer(bufDialer),
 		grpc.WithBlock(), grpc.WithInsecure()}
-	r := rpcVoteRequestor{dialOptions: options}
+	r := voteRequestor{dialOptions: options}
 
 	// Prepare calling arguments and send vote request
 	var currentTerm int64 = initialServerTerm
@@ -84,7 +84,7 @@ func TestVoteRequestRPCTimeout(t *testing.T) {
 	// Create RPC client
 	options := []grpc.DialOption{grpc.WithContextDialer(bufDialer),
 		grpc.WithBlock(), grpc.WithInsecure()}
-	r := rpcVoteRequestor{dialOptions: options}
+	r := voteRequestor{dialOptions: options}
 
 	// Prepare calling arguments and send vote request
 	var currentTerm int64 = initialServerTerm

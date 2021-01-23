@@ -20,20 +20,20 @@ type requestVoteResult struct {
 	err        error
 }
 
-// voteRequestor specifies the interface of the object used to request a vote
-// from a remote server
-type voteRequestor interface {
+// abstractVoteRequestor defines the interface of an object to be used for
+// requesting a vote from a remote server
+type abstractVoteRequestor interface {
 	// requestVote sends a vote request to the remote server at the address
 	// specified by the string argument
 	requestVote(string, int64, int64) requestVoteResult
 }
 
-// rpcVoteRequestor implements the voteRequestor interface using gRPC
-type rpcVoteRequestor struct {
+// voteRequestor implements the voteRequestor interface using gRPC
+type voteRequestor struct {
 	dialOptions []grpc.DialOption
 }
 
-func (v *rpcVoteRequestor) requestVote(address string, serverTerm int64,
+func (v *voteRequestor) requestVote(address string, serverTerm int64,
 	serverID int64) requestVoteResult {
 	// Prepare gRPC call arguments
 	request := new(service.RequestVoteRequest)
