@@ -16,7 +16,12 @@ const (
 // AbstractRaftClient is a thin wrapper around around service.RaftClient. It
 // provides syntactic sugar to marshall / unmarshall RPC requests / responses
 type AbstractRaftClient interface {
+	// AppendEntry sends an AppendEntry RPC call to a remote server
 	AppendEntry(int64, int64, int64, int64) (int64, bool)
+
+	// RequestVote sends a RequestVote RPC call to a remote server. The request
+	// occurs within a context that must be supplied by the caller
+	RequestVote(context.Context, int64, int64) (int64, bool, error)
 }
 
 // MakeRaftClient creates a new Raft client given a RPC connection and the
@@ -53,4 +58,18 @@ func (c *raftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
 		time.Sleep(time.Millisecond * (1 << count))
 		count = utils.MaxInt(count+1, maxCount)
 	}
+}
+
+func (c *raftClient) RequestVote(ctx context.Context, serverTerm int64,
+	serverID int64) (int64, bool, error) {
+	// Create RPC request and send request to remote server
+	request := &service.RequestVoteRequest{ServerTerm: serverTerm,
+		ServerID: serverID}
+	reply, err := c.client.RequestVote(ctx, request)
+
+	// Prepare results and return them to caller
+	if err != nil {
+		return 0, false, err
+	}
+	return reply.ServerTerm, reply.Success, nil
 }
