@@ -16,7 +16,7 @@ var (
 type abstractEntryReplicator interface {
 	// appendEntry replicates the log entry with the specified index and log
 	// entry term in the remote server. The replication may be asynchronous
-	appendEntry(int64, int64)
+	appendEntry(int64, int64, int64)
 }
 
 // entryReplicator implements the abstractEntryReplicator interfaces.
@@ -25,6 +25,7 @@ type entryReplicator struct {
 	active                                     bool
 	matchIndex, nextIndex, logNextIndex        int64
 	appendTerm, lastAppendTerm, lastLeaderTerm int64
+	commitIndex                                int64
 	remoteServerID                             int64
 
 	done    chan bool
@@ -49,12 +50,13 @@ func MakeEntryReplicator(replicatorID int64, remoteServerID int64,
 }
 
 func (a *entryReplicator) appendEntry(appendTerm int64,
-	logNextIndex int64) {
+	logNextIndex int64, commitIndex int64) {
 	a.L.Lock()
 	defer a.L.Unlock()
 
 	a.appendTerm = appendTerm
 	a.logNextIndex = logNextIndex
+	a.commitIndex = commitIndex
 	a.Signal()
 }
 
@@ -142,7 +144,8 @@ func (a *entryReplicator) sendEntries(entries []*logEntry, prevEntryTerm int64,
 	prevEntryIndex int64) bool {
 	// Send entries to remote server
 	remoteTerm, success :=
-		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex)
+		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex,
+			a.commitIndex)
 
 	// Remote server term greater than local term, return
 	if remoteTerm > a.lastAppendTerm {
