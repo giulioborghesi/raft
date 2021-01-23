@@ -162,13 +162,19 @@ func TestFollowerPrepareAppend(t *testing.T) {
 	if s.leaderID != testFollowerRemoteID {
 		t.Fatalf("leader ID expected to change")
 	}
+}
 
-	// Cause a panic as result of multiple leaders present in the same term
-	prepareAppend := func() {
-		serverID := int64(testFollowerRemoteID - 1)
-		f.prepareAppend(serverTerm, serverID, s)
+func TestFollowerProcessAppendEntryEvent(t *testing.T) {
+	// Create server state and follower instance
+	f := new(followerRole)
+	s := MakeFollowerServerState()
+
+	// processAppendEntryEvent should always return false
+	ok := f.processAppendEntryEvent(0, 0, 0, s)
+	if ok {
+		t.Fatalf("processAppendEntryEvent expected to return false")
 	}
-	utils.AssertPanic(t, "prepareAppend", prepareAppend)
+
 }
 
 func TestFollowerRequestVote(t *testing.T) {
