@@ -9,6 +9,9 @@ type logEntry struct {
 // abstractRaftLog specifies the interface to be exposed by a log in Raft
 type abstractRaftLog interface {
 	appendEntries([]*logEntry, int64, int64) bool
+
+	// nextIndex returns the index of the last log entry plus one
+	nextIndex() int64
 }
 
 // mockRaftLog implements a mock log to be used for unit testing purposes
@@ -18,4 +21,8 @@ type mockRaftLog struct {
 
 func (l *mockRaftLog) appendEntries(_ []*logEntry, _ int64, _ int64) bool {
 	return l.value
+}
+
+func (l *mockRaftLog) nextIndex() int64 {
+	return 1
 }

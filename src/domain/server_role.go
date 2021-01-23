@@ -37,6 +37,10 @@ type serverRole interface {
 	// should grant its vote to an external server or not
 	requestVote(int64, int64, *serverState) (int64, bool)
 
+	// sendHeartbeat implements the logic to send an heartbeat message to
+	// followers
+	sendHeartbeat(time.Duration, *serverState)
+
 	// startElection starts an election. Only candidates can start an election
 	// and be elected: a panic occurs if leaders and followers call this method
 	startElection(servers []string, s *serverState) []chan requestVoteResult
