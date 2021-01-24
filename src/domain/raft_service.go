@@ -85,6 +85,10 @@ func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	return s.state.currentTerm(), 0
 }
 
+func (s *raftService) entries(int64) ([]*logEntry, int64, int64) {
+	panic("method not implemented yet")
+}
+
 func (s *raftService) lastModified() time.Time {
 	// Lock access to server state
 	s.Lock()

@@ -54,9 +54,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	// Election is won if count of votes received is more than half of servers
 	// in the cluster
 	if count > ((1 + len(results)) / 2) {
-		s.role = leader
-		s.leaderID = s.serverID
-		s.lastModified = time.Now()
+		s.updateServerState(leader, maxTerm, s.serverID, s.serverID)
 	}
 }
 
@@ -121,7 +119,7 @@ func (c *candidateRole) startElection(
 		}()
 
 		// Append result to output list
-		results = append(results)
+		results = append(results, result)
 	}
 
 	// Return slice of results for each remote server
