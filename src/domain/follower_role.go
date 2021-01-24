@@ -95,7 +95,7 @@ func (f *followerRole) sendHeartbeat(_ time.Duration, _ *serverState) {
 	return
 }
 
-func (f *followerRole) startElection(servers []string,
+func (f *followerRole) startElection(
 	s *serverState) []chan requestVoteResult {
 	panic(fmt.Sprintf(roleErrCallFmt, "startElection", "follower"))
 }

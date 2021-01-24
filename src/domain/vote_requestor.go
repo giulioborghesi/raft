@@ -27,10 +27,20 @@ type abstractVoteRequestor interface {
 	requestVote(int64, int64) requestVoteResult
 }
 
-// makeVoteRequestor creates an object of type voteRequestor, intialized with a
-// provided client, and returns a pointer to it to the caller
-func makeVoteRequestor(c clients.AbstractRaftClient) abstractVoteRequestor {
-	return &voteRequestor{client: c}
+// mockVoteRequestor implements a mock vote requestor that will return false
+// for a configurable number of times, after which it will return true
+type mockVoteRequestor struct {
+	count, maxCount int
+}
+
+func (v *mockVoteRequestor) requestVote(serverTerm,
+	_ int64) requestVoteResult {
+	if v.count < v.maxCount {
+		v.count++
+		return requestVoteResult{serverTerm: serverTerm, success: false,
+			err: nil}
+	}
+	return requestVoteResult{serverTerm: serverTerm, success: true, err: nil}
 }
 
 // voteRequestor implements the abstractVoteRequestor interface. voteRequestor
@@ -38,6 +48,12 @@ func makeVoteRequestor(c clients.AbstractRaftClient) abstractVoteRequestor {
 // responsibility is limited to marshalling / unmarshalling the input / output
 type voteRequestor struct {
 	client clients.AbstractRaftClient
+}
+
+// makeVoteRequestor creates an object of type voteRequestor, intialized with a
+// provided client, and returns a pointer to it to the caller
+func makeVoteRequestor(c clients.AbstractRaftClient) abstractVoteRequestor {
+	return &voteRequestor{client: c}
 }
 
 func (v *voteRequestor) requestVote(serverTerm int64,

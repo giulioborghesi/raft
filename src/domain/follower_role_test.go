@@ -43,7 +43,7 @@ func TestFollowerMethodsThatPanic(t *testing.T) {
 
 	// Test startElection
 	startElection := func() {
-		f.startElection([]string{}, s)
+		f.startElection(s)
 	}
 	utils.AssertPanic(t, "startElection", startElection)
 }

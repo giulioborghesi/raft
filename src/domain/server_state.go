@@ -17,20 +17,18 @@ const (
 	invalidTermID   = -1
 )
 
-var (
-	// Only one instance of serverState per server should exist
-	uniqueServerState *serverState
-)
-
-func init() {
-	uniqueServerState = new(serverState)
-	uniqueServerState.lastModified = time.Now()
-	uniqueServerState.role = follower
-}
-
-// getServerState returns a pointer to the unique instance of serverState
-func getServerState() *serverState {
-	return uniqueServerState
+// makeServerState creates a serverState instance
+func makeServerState(dao server_state_dao.ServerStateDao,
+	log abstractRaftLog, serverID int64) *serverState {
+	s := new(serverState)
+	s.dao = dao
+	s.log = log
+	s.lastModified = time.Now()
+	s.role = follower
+	s.commitIndex = 0
+	s.leaderID = invalidServerID
+	s.serverID = serverID
+	return s
 }
 
 // serverState encapsulates the state of a Raft server

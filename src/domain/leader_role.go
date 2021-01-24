@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"container/list"
 	"fmt"
 	"time"
 )
@@ -12,9 +11,8 @@ const (
 
 // leaderRole implements the serverRole interface for a leader server
 type leaderRole struct {
-	replicators   []abstractEntryReplicator
-	appendResults *list.List
-	matchIndices  []int64
+	replicators  []abstractEntryReplicator
+	matchIndices []int64
 }
 
 func (l *leaderRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
@@ -97,7 +95,7 @@ func (l *leaderRole) sendHeartbeat(to time.Duration, s *serverState) {
 	}
 }
 
-func (l *leaderRole) startElection(servers []string,
+func (l *leaderRole) startElection(
 	s *serverState) []chan requestVoteResult {
 	panic(fmt.Sprintf(roleErrCallFmt, "startElection", "leader"))
 }
