@@ -1,7 +1,7 @@
 package domain
 
 const (
-	commited = iota
+	committed = iota
 	appended
 	lost
 	invalid
@@ -25,6 +25,9 @@ type abstractRaftLog interface {
 
 	appendEntries([]*logEntry, int64, int64) bool
 
+	// entryTerm returns the term of the entry with the specified index
+	entryTerm(int64) int64
+
 	// nextIndex returns the index of the last log entry plus one
 	nextIndex() int64
 }
@@ -40,6 +43,10 @@ func (l *mockRaftLog) appendEntry(_ *logEntry) int64 {
 
 func (l *mockRaftLog) appendEntries(_ []*logEntry, _ int64, _ int64) bool {
 	return l.value
+}
+
+func (l *mockRaftLog) entryTerm(idx int64) int64 {
+	return 0
 }
 
 func (l *mockRaftLog) nextIndex() int64 {

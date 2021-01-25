@@ -17,10 +17,10 @@ type serverRole interface {
 		*serverState) (int64, bool)
 
 	// appendNewEntry appends a new log entry sent by a client to the log
-	appendNewEntry(*logEntry, *serverState) (string, int64, error)
+	appendNewEntry(*logEntry, int64, *serverState) (string, int64, error)
 
 	// entryStatus returns the status of a log entry given its key
-	entryStatus(string, *serverState) (logEntryStatus, int64, error)
+	entryStatus(string, int64, *serverState) (logEntryStatus, int64, error)
 
 	// finalizeElection processes the results of an election and handles the
 	// possible transitions from candidate state to either leader or follower
@@ -46,7 +46,7 @@ type serverRole interface {
 
 	// sendHeartbeat implements the logic to send an heartbeat message to
 	// followers
-	sendHeartbeat(time.Duration, *serverState)
+	sendHeartbeat(time.Duration, int64, *serverState)
 
 	// startElection starts an election. Only candidates can start an election
 	// and be elected: a panic occurs if leaders and followers call this method

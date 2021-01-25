@@ -30,13 +30,13 @@ func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
 	return currentTerm, s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
 }
 
-func (f *followerRole) appendNewEntry(_ *logEntry,
+func (f *followerRole) appendNewEntry(_ *logEntry, _ int64,
 	s *serverState) (string, int64, error) {
 	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
 }
 
-func (f *followerRole) entryStatus(_ string, s *serverState) (logEntryStatus,
-	int64, error) {
+func (f *followerRole) entryStatus(_ string, _ int64,
+	s *serverState) (logEntryStatus, int64, error) {
 	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
 }
 
@@ -101,7 +101,7 @@ func (f *followerRole) requestVote(serverTerm int64,
 	return serverTerm, true
 }
 
-func (f *followerRole) sendHeartbeat(_ time.Duration, _ *serverState) {
+func (f *followerRole) sendHeartbeat(time.Duration, int64, *serverState) {
 	return
 }
 

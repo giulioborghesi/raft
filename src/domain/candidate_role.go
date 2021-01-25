@@ -17,13 +17,13 @@ func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "candidate"))
 }
 
-func (c *candidateRole) appendNewEntry(_ *logEntry,
+func (c *candidateRole) appendNewEntry(_ *logEntry, _ int64,
 	s *serverState) (string, int64, error) {
 	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
 }
 
-func (c *candidateRole) entryStatus(_ string, s *serverState) (logEntryStatus,
-	int64, error) {
+func (c *candidateRole) entryStatus(_ string, _ int64,
+	s *serverState) (logEntryStatus, int64, error) {
 	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
 }
 
@@ -104,7 +104,7 @@ func (c *candidateRole) requestVote(serverTerm int64,
 	return serverTerm, true
 }
 
-func (c *candidateRole) sendHeartbeat(_ time.Duration, _ *serverState) {
+func (c *candidateRole) sendHeartbeat(time.Duration, int64, *serverState) {
 	return
 }
 
