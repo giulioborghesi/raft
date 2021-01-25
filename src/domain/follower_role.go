@@ -27,7 +27,11 @@ func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
 	}
 
 	// Try appending log entries to log
-	return currentTerm, s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
+	success := s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
+	if success {
+		s.targetCommitIndex = commitIndex
+	}
+	return currentTerm, success
 }
 
 func (f *followerRole) appendNewEntry(_ *logEntry, _ int64,
