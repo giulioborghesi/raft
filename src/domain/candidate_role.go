@@ -7,10 +7,6 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
-const (
-	candidateErrFmt = "%s should not be called when a server is a candidate"
-)
-
 // candidateRole implements the serverRole interface for a candidate server
 type candidateRole struct {
 	voteRequestors []abstractVoteRequestor
@@ -18,7 +14,17 @@ type candidateRole struct {
 
 func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
-	panic(fmt.Sprintf(candidateErrFmt, "appendEntry"))
+	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "candidate"))
+}
+
+func (c *candidateRole) appendNewEntry(_ *logEntry, _ int64,
+	s *serverState) (string, int64, error) {
+	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
+}
+
+func (c *candidateRole) entryStatus(_ string, _ int64,
+	s *serverState) (logEntryStatus, int64, error) {
+	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
 }
 
 func (c *candidateRole) finalizeElection(electionTerm int64,
@@ -98,7 +104,7 @@ func (c *candidateRole) requestVote(serverTerm int64,
 	return serverTerm, true
 }
 
-func (c *candidateRole) sendHeartbeat(_ time.Duration, _ *serverState) {
+func (c *candidateRole) sendHeartbeat(time.Duration, int64, *serverState) {
 	return
 }
 

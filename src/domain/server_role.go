@@ -3,7 +3,8 @@ package domain
 import "time"
 
 const (
-	roleErrCallFmt = "%s should not be called when the server is a %s"
+	roleErrCallFmt  = "%s should not be called when the server is a %s"
+	wrongRoleErrFmt = "server is a %s"
 )
 
 // serverRole defines the interface for a server's role in Raft. There exists
@@ -14,6 +15,12 @@ type serverRole interface {
 	// should append a log entry sent by the current leader to its log
 	appendEntry([]*logEntry, int64, int64, int64, int64, int64,
 		*serverState) (int64, bool)
+
+	// appendNewEntry appends a new log entry sent by a client to the log
+	appendNewEntry(*logEntry, int64, *serverState) (string, int64, error)
+
+	// entryStatus returns the status of a log entry given its key
+	entryStatus(string, int64, *serverState) (logEntryStatus, int64, error)
 
 	// finalizeElection processes the results of an election and handles the
 	// possible transitions from candidate state to either leader or follower
@@ -39,7 +46,7 @@ type serverRole interface {
 
 	// sendHeartbeat implements the logic to send an heartbeat message to
 	// followers
-	sendHeartbeat(time.Duration, *serverState)
+	sendHeartbeat(time.Duration, int64, *serverState)
 
 	// startElection starts an election. Only candidates can start an election
 	// and be elected: a panic occurs if leaders and followers call this method

@@ -16,6 +16,15 @@ type AbstractRaftService interface {
 	AppendEntry([]*service.LogEntry, int64, int64, int64, int64,
 		int64) (int64, bool)
 
+	// ApplyCommandAsync applies a command to the state machine asynchronously.
+	// It is invoked by an external client of the Raft service
+	ApplyCommandAsync(*service.LogEntry) (string, int64, error)
+
+	// CommandStatus checks the status of a command that was previously sent to
+	// the replicated state machine. It is invoked by an external client of the
+	// Raft service
+	CommandStatus(string) (logEntryStatus, int64, error)
+
 	// entryInfo returns the current leader term and the term of the log entry
 	// with the specified index
 	entryInfo(int64) (int64, int64)
@@ -74,6 +83,24 @@ func (s *raftService) AppendEntry(entries []*service.LogEntry,
 		serverID, prevLogTerm, prevLogIndex, commitIndex, s.state)
 }
 
+func (s *raftService) ApplyCommandAsync(e *service.LogEntry) (string,
+	int64, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	// Try appending entry to log and return
+	commitIndex := s.state.targetCommitIndex
+	newEntry := &logEntry{entryTerm: e.EntryTerm, payload: e.Payload}
+	return s.roles[s.state.role].appendNewEntry(newEntry, commitIndex, s.state)
+}
+
+func (s *raftService) CommandStatus(key string) (logEntryStatus,
+	int64, error) {
+
+	commitIndex := s.state.targetCommitIndex
+	return s.roles[s.state.role].entryStatus(key, commitIndex, s.state)
+}
+
 func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	s.Lock()
 	defer s.Unlock()
@@ -125,7 +152,8 @@ func (s *raftService) sendHeartbeat(to time.Duration) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.roles[s.state.role].sendHeartbeat(to, s.state)
+	commitIndex := s.state.targetCommitIndex
+	s.roles[s.state.role].sendHeartbeat(to, commitIndex, s.state)
 }
 
 func (s *raftService) StartElection(to time.Duration) {

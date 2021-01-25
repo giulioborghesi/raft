@@ -27,7 +27,21 @@ func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
 	}
 
 	// Try appending log entries to log
-	return currentTerm, s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
+	success := s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
+	if success {
+		s.targetCommitIndex = commitIndex
+	}
+	return currentTerm, success
+}
+
+func (f *followerRole) appendNewEntry(_ *logEntry, _ int64,
+	s *serverState) (string, int64, error) {
+	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+}
+
+func (f *followerRole) entryStatus(_ string, _ int64,
+	s *serverState) (logEntryStatus, int64, error) {
+	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
 }
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
@@ -91,7 +105,7 @@ func (f *followerRole) requestVote(serverTerm int64,
 	return serverTerm, true
 }
 
-func (f *followerRole) sendHeartbeat(_ time.Duration, _ *serverState) {
+func (f *followerRole) sendHeartbeat(time.Duration, int64, *serverState) {
 	return
 }
 
