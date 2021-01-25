@@ -16,6 +16,13 @@ type AbstractRaftService interface {
 	AppendEntry([]*service.LogEntry, int64, int64, int64, int64,
 		int64) (int64, bool)
 
+	// ApplyCommand applies a command to the state machine. It is invoked by an
+	// external client of the Raft service
+	ApplyCommand(*service.LogEntry) (string, int64, error)
+
+	// EntryStatus checks the status of a log entry given its key
+	EntryStatus(string) (logEntryStatus, int64, error)
+
 	// entryInfo returns the current leader term and the term of the log entry
 	// with the specified index
 	entryInfo(int64) (int64, int64)
@@ -72,6 +79,19 @@ func (s *raftService) AppendEntry(entries []*service.LogEntry,
 	// Append entry to log if possible
 	return s.roles[s.state.role].appendEntry(newEntries, serverTerm,
 		serverID, prevLogTerm, prevLogIndex, commitIndex, s.state)
+}
+
+func (s *raftService) ApplyCommand(e *service.LogEntry) (string, int64, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	// Try appending entry to log and return
+	newEntry := &logEntry{entryTerm: e.EntryTerm, payload: e.Payload}
+	return s.roles[s.state.role].appendNewEntry(newEntry, s.state)
+}
+
+func (s *raftService) EntryStatus(key string) (logEntryStatus, int64, error) {
+	return s.roles[s.state.role].entryStatus(key, s.state)
 }
 
 func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {

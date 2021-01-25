@@ -30,6 +30,16 @@ func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
 	return currentTerm, s.log.appendEntries(entries, prevLogTerm, prevLogIndex)
 }
 
+func (f *followerRole) appendNewEntry(_ *logEntry,
+	s *serverState) (string, int64, error) {
+	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+}
+
+func (f *followerRole) entryStatus(_ string, s *serverState) (logEntryStatus,
+	int64, error) {
+	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+}
+
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) {
 	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "follower"))
