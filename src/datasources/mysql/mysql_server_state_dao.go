@@ -1,4 +1,4 @@
-package mysql_server_state_dao
+package mysql_datasources
 
 import (
 	"database/sql"

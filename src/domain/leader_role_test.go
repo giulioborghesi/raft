@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
@@ -19,7 +19,7 @@ const (
 // MakeLeaderServerState creates and initializes an instance of serverState
 // for a server in leader mode
 func MakeLeaderServerState() *serverState {
-	dao := server_state_dao.MakeTestServerStateDao()
+	dao := datasources.MakeTestServerStateDao()
 	dao.UpdateTerm(testLeaderStartingTerm)
 	dao.UpdateVotedFor(testLeaderVotedFor)
 

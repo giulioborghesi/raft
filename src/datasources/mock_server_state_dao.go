@@ -1,4 +1,4 @@
-package server_state_dao
+package datasources
 
 // testServerStateDao implements the ServerStateDao interface for use in unit
 // tests

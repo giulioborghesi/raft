@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
@@ -18,7 +18,7 @@ const (
 )
 
 // makeServerState creates a serverState instance
-func makeServerState(dao server_state_dao.ServerStateDao,
+func makeServerState(dao datasources.ServerStateDao,
 	log abstractRaftLog, serverID int64) *serverState {
 	s := new(serverState)
 	s.dao = dao
@@ -33,7 +33,7 @@ func makeServerState(dao server_state_dao.ServerStateDao,
 
 // serverState encapsulates the state of a Raft server
 type serverState struct {
-	dao               server_state_dao.ServerStateDao
+	dao               datasources.ServerStateDao
 	log               abstractRaftLog
 	lastModified      time.Time
 	role              int
