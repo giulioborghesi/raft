@@ -1,4 +1,4 @@
-package server_state_dao
+package datasources
 
 // ServerStateDao defines the interface of a server state DAO object, which is
 // used to access and persist to disk the term number and the ID of the server

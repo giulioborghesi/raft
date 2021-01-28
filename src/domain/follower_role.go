@@ -3,6 +3,8 @@ package domain
 import (
 	"fmt"
 	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
 const (
@@ -13,8 +15,9 @@ const (
 // followerRole implements the serverRole interface for a follower server
 type followerRole struct{}
 
-func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
-	prevLogTerm, prevLogIndex int64, commitIndex int64, s *serverState) (int64, bool) {
+func (f *followerRole) appendEntry(entries []*service.LogEntry, serverTerm,
+	serverID, prevLogTerm, prevLogIndex int64, commitIndex int64,
+	s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm != serverTerm {
@@ -34,7 +37,7 @@ func (f *followerRole) appendEntry(entries []*logEntry, serverTerm, serverID,
 	return currentTerm, success
 }
 
-func (f *followerRole) appendNewEntry(_ *logEntry, _ int64,
+func (f *followerRole) appendNewEntry(_ *service.LogEntry, _ int64,
 	s *serverState) (string, int64, error) {
 	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
 }

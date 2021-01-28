@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/giulioborghesi/raft-implementation/src/service"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
@@ -12,12 +13,12 @@ type candidateRole struct {
 	voteRequestors []abstractVoteRequestor
 }
 
-func (c *candidateRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
+func (c *candidateRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "candidate"))
 }
 
-func (c *candidateRole) appendNewEntry(_ *logEntry, _ int64,
+func (c *candidateRole) appendNewEntry(_ *service.LogEntry, _ int64,
 	s *serverState) (string, int64, error) {
 	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
 }

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
@@ -19,7 +19,7 @@ const (
 // MakeFollowerServerState creates and initializes an instance of serverState
 // for a server in follower mode
 func MakeFollowerServerState() *serverState {
-	dao := server_state_dao.MakeTestServerStateDao()
+	dao := datasources.MakeTestServerStateDao()
 	dao.UpdateTerm(testFollowerStartingTerm)
 	dao.UpdateVotedFor(testFollowerVotedFor)
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
@@ -19,7 +19,7 @@ const (
 // MakeCandidateServerState creates and initializes an instance of serverState
 // for a server in candidate mode
 func MakeCandidateServerState() *serverState {
-	dao := server_state_dao.MakeTestServerStateDao()
+	dao := datasources.MakeTestServerStateDao()
 	dao.UpdateTerm(testCandidateStartingTerm)
 	dao.UpdateVotedFor(testCandidateVotedFor)
 

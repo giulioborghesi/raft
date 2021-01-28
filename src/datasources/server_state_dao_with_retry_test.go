@@ -1,4 +1,4 @@
-package server_state_dao
+package datasources
 
 import (
 	"fmt"

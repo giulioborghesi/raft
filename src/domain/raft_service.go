@@ -31,7 +31,7 @@ type AbstractRaftService interface {
 
 	// entries returns a slice of the log entries starting from the specified
 	// index, together with the current term and the previous entry term
-	entries(int64) ([]*logEntry, int64, int64)
+	entries(int64) ([]*service.LogEntry, int64, int64)
 
 	// lastModified returns the timestamp of last server update
 	lastModified() time.Time
@@ -71,27 +71,19 @@ func (s *raftService) AppendEntry(entries []*service.LogEntry,
 		return s.state.currentTerm(), false
 	}
 
-	// Unrmarshall log entries
-	newEntries := make([]*logEntry, 0, len(entries))
-	for _, e := range entries {
-		newEntry := logEntry{entryTerm: e.EntryTerm, payload: e.Payload}
-		newEntries = append(newEntries, &newEntry)
-	}
-
 	// Append entry to log if possible
-	return s.roles[s.state.role].appendEntry(newEntries, serverTerm,
+	return s.roles[s.state.role].appendEntry(entries, serverTerm,
 		serverID, prevLogTerm, prevLogIndex, commitIndex, s.state)
 }
 
-func (s *raftService) ApplyCommandAsync(e *service.LogEntry) (string,
+func (s *raftService) ApplyCommandAsync(entry *service.LogEntry) (string,
 	int64, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	// Try appending entry to log and return
 	commitIndex := s.state.targetCommitIndex
-	newEntry := &logEntry{entryTerm: e.EntryTerm, payload: e.Payload}
-	return s.roles[s.state.role].appendNewEntry(newEntry, commitIndex, s.state)
+	return s.roles[s.state.role].appendNewEntry(entry, commitIndex, s.state)
 }
 
 func (s *raftService) CommandStatus(key string) (logEntryStatus,
@@ -112,7 +104,7 @@ func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	return s.state.currentTerm(), 0
 }
 
-func (s *raftService) entries(int64) ([]*logEntry, int64, int64) {
+func (s *raftService) entries(int64) ([]*service.LogEntry, int64, int64) {
 	panic("method not implemented yet")
 }
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	server_state_dao "github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 func createMockRaftService(vr []abstractVoteRequestor,
 	er []abstractEntryReplicator) *raftService {
 	// Create a server state instance
-	dao := server_state_dao.MakeTestServerStateDao()
+	dao := datasources.MakeTestServerStateDao()
 	log := &mockRaftLog{value: true}
 	s := makeServerState(dao, log, testServiceIntegrationLeaderID)
 

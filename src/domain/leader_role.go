@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
 const (
@@ -44,12 +46,12 @@ type leaderRole struct {
 	matchIndices []int64
 }
 
-func (l *leaderRole) appendEntry(_ []*logEntry, _, _, _, _, _ int64,
+func (l *leaderRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "leader"))
 }
 
-func (l *leaderRole) appendNewEntry(entry *logEntry, commitIndex int64,
+func (l *leaderRole) appendNewEntry(entry *service.LogEntry, commitIndex int64,
 	s *serverState) (string, int64, error) {
 	// Append new entry to log
 	nextLogIndex := s.log.appendEntry(entry)

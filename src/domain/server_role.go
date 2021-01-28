@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/service"
+)
 
 const (
 	roleErrCallFmt  = "%s should not be called when the server is a %s"
@@ -13,11 +17,11 @@ const (
 type serverRole interface {
 	// appendEntry implements the logic used to determine whether a server
 	// should append a log entry sent by the current leader to its log
-	appendEntry([]*logEntry, int64, int64, int64, int64, int64,
+	appendEntry([]*service.LogEntry, int64, int64, int64, int64, int64,
 		*serverState) (int64, bool)
 
 	// appendNewEntry appends a new log entry sent by a client to the log
-	appendNewEntry(*logEntry, int64, *serverState) (string, int64, error)
+	appendNewEntry(*service.LogEntry, int64, *serverState) (string, int64, error)
 
 	// entryStatus returns the status of a log entry given its key
 	entryStatus(string, int64, *serverState) (logEntryStatus, int64, error)

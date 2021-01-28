@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/giulioborghesi/raft-implementation/src/clients"
+	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
 var (
@@ -140,8 +141,8 @@ func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
 	a.nextIndex = nextIndex
 }
 
-func (a *entryReplicator) sendEntries(entries []*logEntry, prevEntryTerm int64,
-	prevEntryIndex int64) bool {
+func (a *entryReplicator) sendEntries(entries []*service.LogEntry,
+	prevEntryTerm int64, prevEntryIndex int64) bool {
 	// Send entries to remote server
 	remoteTerm, success :=
 		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex,
