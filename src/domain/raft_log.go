@@ -1,6 +1,9 @@
 package domain
 
-import "github.com/giulioborghesi/raft-implementation/src/service"
+import (
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/service"
+)
 
 const (
 	committed = iota
@@ -78,6 +81,34 @@ func (l *raftLog) entryTerm(idx int64) int64 {
 
 func (l *raftLog) nextIndex() int64 {
 	return int64(len(l.entries))
+}
+
+// persistentRaftLog implements a log that stores entries in memory and on
+// durable storage
+type persistentRaftLog struct {
+	raftLog
+	dao datasources.AbstractLogDao
+}
+
+func (l *persistentRaftLog) appendEntry(entry *service.LogEntry) int64 {
+	entryIndex := l.raftLog.appendEntry(entry)
+	if err := l.dao.AppendEntry(entry); err != nil {
+		panic(err)
+	}
+	return entryIndex
+}
+
+func (l *persistentRaftLog) appendEntries(entries []*service.LogEntry,
+	prevEntryTerm int64, prevEntryIndex int64) bool {
+	if success := l.raftLog.appendEntries(entries, prevEntryTerm,
+		prevEntryIndex); !success {
+		return success
+	}
+
+	if err := l.dao.AppendEntries(entries, prevEntryIndex); err != nil {
+		panic(err)
+	}
+	return true
 }
 
 // mockRaftLog implements a mock log to be used for unit testing purposes
