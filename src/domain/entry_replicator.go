@@ -32,18 +32,22 @@ type entryReplicator struct {
 	done    chan bool
 	client  clients.AbstractRaftClient
 	service AbstractRaftService
-	sync.Cond
+	*sync.Cond
 }
 
 // MakeEntryReplicator creates an instance of entryAppender. appendTerm will be
 // initialized with an invalid term ID to ensure that log entries starts to be
 // replicated only after receiving a signal from the current leader
-func MakeEntryReplicator(replicatorID int64, remoteServerID int64,
-	c clients.AbstractRaftClient, s AbstractRaftService) *entryReplicator {
+func MakeEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
+	s AbstractRaftService) *entryReplicator {
 	// Create entry appender and initialize appendTerm to invalid
 	a := &entryReplicator{active: false, client: c, service: s,
 		remoteServerID: remoteServerID}
 	a.appendTerm = invalidTermID
+
+	// Initialize condition variable
+	m := sync.Mutex{}
+	a.Cond = sync.NewCond(&m)
 
 	// Activate entry appender and return
 	a.start()
@@ -70,6 +74,13 @@ func (a *entryReplicator) processEntries() {
 		for a.appendTerm < a.lastLeaderTerm || (a.appendTerm ==
 			a.lastAppendTerm && (a.matchIndex+1) == a.logNextIndex) {
 			a.Wait()
+
+			// If server is no longer active, stop
+			if a.active == false {
+				return
+			}
+
+			// Handle heartbeats
 			if a.appendTerm >= a.lastLeaderTerm {
 				break
 			}
@@ -173,21 +184,17 @@ func (a *entryReplicator) start() {
 		return
 	}
 
-	// Create channel
-	done := make(chan bool)
-
 	// Launch process entries asynchronously
 	a.active = true
-	a.done = done
+	a.done = make(chan bool)
 	go func() {
 		a.processEntries()
-		done <- true
+		a.done <- true
 	}()
 }
 
 func (a *entryReplicator) stop() {
 	a.L.Lock()
-	defer a.L.Unlock()
 
 	// Nothing to do if appender is already inactive
 	if a.active == false {
@@ -196,6 +203,10 @@ func (a *entryReplicator) stop() {
 
 	// Set appender to inactive and wait for processEntries to return
 	a.active = false
+	a.Signal()
+
+	// Must release lock before synchronizing
+	a.L.Unlock()
 	<-a.done
 }
 

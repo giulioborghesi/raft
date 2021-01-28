@@ -1,17 +1,40 @@
 package domain
 
 import (
+	"context"
+	"fmt"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/giulioborghesi/raft-implementation/src/datasources"
+	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
 const (
+	testClusterSize                     = 3
 	testServiceIntegrationLeaderID      = 1
 	testServiceIntegrationOtherServerID = 2
 )
+
+// localRaftClient provides an implementation of RaftClient to be used for
+// unit tests
+type localRaftClient struct {
+	s        *raftService
+	serverID int64
+}
+
+func (c *localRaftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
+	prevEntryIndex int64, commitIndex int64) (int64, bool) {
+	return c.s.AppendEntry(nil, serverTerm, c.serverID, prevEntryTerm,
+		prevEntryIndex, commitIndex)
+}
+
+func (c *localRaftClient) RequestVote(ctx context.Context,
+	serverTerm int64, serverID int64) (int64, bool, error) {
+	currentTerm, success := c.s.RequestVote(serverTerm, serverID)
+	return currentTerm, success, nil
+}
 
 func createMockRaftService(vr []abstractVoteRequestor,
 	er []abstractEntryReplicator) *raftService {
@@ -27,6 +50,51 @@ func createMockRaftService(vr []abstractVoteRequestor,
 	service.roles[leader] = &leaderRole{replicators: er,
 		matchIndices: []int64{math.MaxInt64, 0}}
 	return service
+}
+
+func createMockRaftCluster() []*raftService {
+	services := make([]*raftService, 0, testClusterSize)
+	for i := 0; i < testClusterSize; i++ {
+		// Create a server state instance
+		dao := datasources.MakeTestServerStateDao()
+		log := &raftLog{}
+		log.entries = make([]*service.LogEntry, 0)
+		s := makeServerState(dao, log, int64(i))
+
+		// Create the raft service
+		service := &raftService{state: s, roles: make(map[int]serverRole)}
+		service.roles[follower] = &followerRole{}
+		services = append(services, service)
+	}
+
+	// For each service initialize the candidate and leader roles
+	for i, service := range services {
+		vr := make([]abstractVoteRequestor, 0, testClusterSize)
+		er := make([]abstractEntryReplicator, 0, testClusterSize)
+		for j := 0; j < testClusterSize; j++ {
+			if i != j {
+				// Create local client
+				c := &localRaftClient{serverID: int64(i), s: services[j]}
+
+				// Create vote requestor
+				vr = append(vr, makeVoteRequestor(c))
+
+				// Create entry replicator
+				er = append(er, MakeEntryReplicator(int64(j), c, service))
+			}
+		}
+
+		// Initialize match indices
+		matchIndices := make([]int64, testClusterSize)
+		matchIndices[i] = math.MaxInt64
+
+		// Initialize leader and candidate roles
+		service.roles[candidate] = &candidateRole{voteRequestors: vr}
+		service.roles[leader] = &leaderRole{replicators: er,
+			matchIndices: nil}
+	}
+
+	return services
 }
 
 func TestLeaderAppendEntry(t *testing.T) {
@@ -109,5 +177,105 @@ func TestLeaderElection(t *testing.T) {
 	if s.state.currentTerm() != (initialTerm + 2) {
 		t.Fatalf("invalid term: expected: %d, actual: %d",
 			initialTerm, s.state.currentTerm())
+	}
+}
+
+func TestRaftCluster(t *testing.T) {
+	// Create Raft cluster
+	services := createMockRaftCluster()
+	time.Sleep(time.Millisecond * 200)
+
+	// Start a new election
+	leaderID := 0
+	services[leaderID].StartElection(time.Duration(0))
+
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Server with ID equal to leaderID should be the new leader
+		if serverID == leaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf(fmt.Sprintf("server %d expected to become leader",
+					serverID))
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf(fmt.Sprintf("server %d expected to become follower",
+					serverID))
+			}
+		}
+
+		// All servers should have voted for leaderID
+		_, votedFor := services[serverID].state.votedFor()
+		if votedFor != int64(leaderID) {
+			t.Fatalf("vote casted for wrong server: "+
+				"expected: %d, actual: %d", leaderID, votedFor)
+		}
+
+		// Current term should be 1
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 1 {
+			t.Fatalf("invalid term: expected %d, actual %d", 1, currentTerm)
+		}
+	}
+
+	// Try starting a new election where timer was reset just in time
+	newLeaderID := 1
+	services[newLeaderID].StartElection(time.Minute)
+
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Leader should have not changed
+		if serverID == leaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf(fmt.Sprintf("server %d expected to become leader",
+					serverID))
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf(fmt.Sprintf("server %d expected to become follower",
+					serverID))
+			}
+		}
+
+		// Current term should still be 1
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 1 {
+			t.Fatalf("invalid term: expected %d, actual %d", 1, currentTerm)
+		}
+	}
+
+	// This time, election will succeed
+	services[newLeaderID].StartElection(time.Duration(0))
+
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Leader should have changed to newLeaderID
+		if serverID == newLeaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf("server %d expected to become leader", serverID)
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf("server %d expected to become follower", serverID)
+			}
+		}
+
+		// All servers should have voted for newLeaderID
+		_, votedFor := services[serverID].state.votedFor()
+		if votedFor != int64(newLeaderID) {
+			t.Fatalf("vote casted for wrong server: "+
+				"expected: %d, actual: %d", newLeaderID, votedFor)
+		}
+
+		// Current term should now be 2
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 2 {
+			t.Fatalf("invalid term: expected %d, actual %d", 2, currentTerm)
+		}
+	}
+
+	// Teardown cluster
+	for _, service := range services {
+		role := service.roles[leader].(*leaderRole)
+		for _, er := range role.replicators {
+			er.(*entryReplicator).stop()
+		}
 	}
 }
