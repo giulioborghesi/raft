@@ -10,7 +10,7 @@ type testServerStateDao struct {
 // MakeTestServerStateDao creates an instance of testServerStateDao for use
 // outside of this package
 func MakeTestServerStateDao() *testServerStateDao {
-	return &testServerStateDao{}
+	return &testServerStateDao{votedFor: -1}
 }
 
 func (s *testServerStateDao) CurrentTerm() int64 {

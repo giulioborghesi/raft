@@ -88,7 +88,6 @@ func (s *raftService) ApplyCommandAsync(entry *service.LogEntry) (string,
 
 func (s *raftService) CommandStatus(key string) (logEntryStatus,
 	int64, error) {
-
 	commitIndex := s.state.targetCommitIndex
 	return s.roles[s.state.role].entryStatus(key, commitIndex, s.state)
 }
