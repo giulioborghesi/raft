@@ -48,7 +48,7 @@ func (f *followerRole) entryStatus(_ string, _ int64,
 }
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
-	_ *serverState) {
+	_ *serverState) bool {
 	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "follower"))
 }
 

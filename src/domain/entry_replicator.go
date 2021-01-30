@@ -44,6 +44,7 @@ func MakeEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
 	a := &entryReplicator{active: false, client: c, service: s,
 		remoteServerID: remoteServerID}
 	a.appendTerm = invalidTermID
+	a.matchIndex = -1
 
 	// Initialize condition variable
 	m := sync.Mutex{}
@@ -104,7 +105,7 @@ func (a *entryReplicator) processEntries() {
 		}
 
 		// Send the log entries to the remote server
-		if ok := a.sendEntries(entries, a.matchIndex, prevEntryTerm); ok {
+		if ok := a.sendEntries(entries, prevEntryTerm, a.matchIndex); ok {
 			a.service.processAppendEntryEvent(appendTerm, a.matchIndex,
 				a.remoteServerID)
 		}
@@ -148,7 +149,7 @@ func (a *entryReplicator) updateMatchIndex(appendTerm int64,
 func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
 	a.lastAppendTerm = appendTerm
 	a.lastLeaderTerm = a.lastAppendTerm
-	a.matchIndex = 0
+	a.matchIndex = -1
 	a.nextIndex = nextIndex
 }
 

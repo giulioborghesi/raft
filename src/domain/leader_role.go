@@ -86,7 +86,7 @@ func (l *leaderRole) entryStatus(key string, commitIndex int64,
 }
 
 func (l *leaderRole) finalizeElection(_ int64, _ []requestVoteResult,
-	_ *serverState) {
+	_ *serverState) bool {
 	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "leader"))
 }
 

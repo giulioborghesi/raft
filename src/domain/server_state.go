@@ -25,7 +25,7 @@ func makeServerState(dao datasources.ServerStateDao,
 	s.log = log
 	s.lastModified = time.Now()
 	s.role = follower
-	s.targetCommitIndex = 0
+	s.targetCommitIndex = invalidLogID
 	s.leaderID = invalidServerID
 	s.serverID = serverID
 	return s
@@ -60,8 +60,8 @@ func (s *serverState) updateServerState(newRole int, newTerm int64,
 // updateCommitIndex computes the new commit index based on the match indices
 // of the remote servers
 func (s *serverState) updateTargetCommitIndex(matchIndices []int64) {
-	// Make a copy of the match indices
-	indices := []int64{}
+	// Make a deep copy of the match indices slice
+	indices := make([]int64, len(matchIndices))
 	copy(indices, matchIndices)
 
 	// Update match index of local server and sort the resulting slice

@@ -47,32 +47,31 @@ func (l *raftLog) appendEntry(entry *service.LogEntry) int64 {
 func (l *raftLog) appendEntries(entries []*service.LogEntry,
 	prevEntryTerm int64, prevEntryIndex int64) bool {
 	// Must replace all log entries
-	if prevEntryIndex == 0 {
+	if prevEntryIndex == -1 {
 		l.entries = entries
 		return true
 	}
 
-	// Previous log entry does not exist
-	if (prevEntryIndex > int64(len(l.entries))) ||
-		(l.entries[prevEntryIndex-1].EntryTerm != prevEntryTerm) {
+	// Previous log entry was removed
+	if (prevEntryIndex >= int64(len(l.entries))) ||
+		(l.entries[prevEntryIndex].EntryTerm != prevEntryTerm) {
 		return false
 	}
 
 	// Remove obsolete entries and append new ones
-	l.entries = l.entries[:prevEntryIndex]
+	l.entries = l.entries[:prevEntryIndex+1]
 	l.entries = append(l.entries, entries...)
 	return false
 }
 
 func (l *raftLog) entryTerm(idx int64) int64 {
-	// Log entries numbering starts from 1
-	if idx == 0 {
+	if idx == -1 {
 		return 0
 	}
 
 	// Log entry exists, return its term
-	if idx <= int64(len(l.entries)) {
-		return l.entries[idx-1].EntryTerm
+	if idx < int64(len(l.entries)) {
+		return l.entries[idx].EntryTerm
 	}
 
 	// Log entry does not exist, return ID for invalid term

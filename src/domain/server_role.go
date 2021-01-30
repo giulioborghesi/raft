@@ -30,7 +30,7 @@ type serverRole interface {
 	// possible transitions from candidate state to either leader or follower
 	// states. Only candidates can finalize an election: calling this method on
 	// followers and leaders should result in a panic
-	finalizeElection(int64, []requestVoteResult, *serverState)
+	finalizeElection(int64, []requestVoteResult, *serverState) bool
 
 	// makeCandidate implements the role transition logic to candidate
 	makeCandidate(time.Duration, *serverState) bool
