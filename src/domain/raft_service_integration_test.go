@@ -62,7 +62,7 @@ func createMockRaftCluster() ([]*raftService, [][]*localRaftClient) {
 		// Create a server state instance
 		dao := datasources.MakeTestServerStateDao()
 		log := &raftLog{}
-		log.entries = make([]*service.LogEntry, 0)
+		log.e = make([]*service.LogEntry, 0)
 		s := makeServerState(dao, log, int64(i))
 
 		// Create the raft service

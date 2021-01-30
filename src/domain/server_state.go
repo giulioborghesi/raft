@@ -12,6 +12,7 @@ const (
 	leader
 	candidate
 
+	initialTerm     = 0
 	invalidLogID    = -1
 	invalidServerID = -1
 	invalidTermID   = -1
