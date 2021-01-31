@@ -96,15 +96,16 @@ func (s *raftService) entryInfo(entryIndex int64) (int64, int64) {
 	s.Lock()
 	defer s.Unlock()
 
-	term := s.state.currentTerm()
-	if entryIndex > 0 {
-		return term, invalidTermID
-	}
-	return s.state.currentTerm(), 0
+	return s.state.currentTerm(), s.state.log.entryTerm(entryIndex)
 }
 
-func (s *raftService) entries(int64) ([]*service.LogEntry, int64, int64) {
-	panic("method not implemented yet")
+func (s *raftService) entries(entryIndex int64) ([]*service.LogEntry, int64,
+	int64) {
+	s.Lock()
+	defer s.Unlock()
+
+	entries, prevEntryTerm := s.state.log.entries(entryIndex)
+	return entries, s.state.currentTerm(), prevEntryTerm
 }
 
 func (s *raftService) lastModified() time.Time {
@@ -173,5 +174,10 @@ func (s *raftService) StartElection(to time.Duration) {
 	defer s.Unlock()
 
 	// Finalize election
-	s.roles[s.state.role].finalizeElection(electionTerm, results, s.state)
+	if success := s.roles[s.state.role].finalizeElection(electionTerm,
+		results, s.state); success {
+		commitIndex := s.state.targetCommitIndex
+		s.roles[s.state.role].sendHeartbeat(time.Duration(0), commitIndex,
+			s.state)
+	}
 }

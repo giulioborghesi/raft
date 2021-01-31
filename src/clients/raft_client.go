@@ -17,7 +17,7 @@ const (
 // provides syntactic sugar to marshall / unmarshall RPC requests / responses
 type AbstractRaftClient interface {
 	// AppendEntry sends an AppendEntry RPC call to a remote server
-	AppendEntry(int64, int64, int64, int64) (int64, bool)
+	AppendEntry([]*service.LogEntry, int64, int64, int64, int64) (int64, bool)
 
 	// RequestVote sends a RequestVote RPC call to a remote server. The request
 	// occurs within a context that must be supplied by the caller
@@ -40,12 +40,14 @@ type raftClient struct {
 	serverID int64
 }
 
-func (c *raftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
-	prevEntryIndex int64, commitIndex int64) (int64, bool) {
+func (c *raftClient) AppendEntry(entries []*service.LogEntry,
+	serverTerm int64, prevEntryTerm int64, prevEntryIndex int64,
+	commitIndex int64) (int64, bool) {
 	// Create RPC request
-	request := &service.AppendEntryRequest{ServerTerm: serverTerm,
-		ServerID: c.serverID, PrevEntryTerm: prevEntryTerm,
-		PrevEntryIndex: prevEntryIndex, CommitIndex: commitIndex}
+	request := &service.AppendEntryRequest{Entries: entries,
+		ServerTerm: serverTerm, ServerID: c.serverID,
+		PrevEntryTerm: prevEntryTerm, PrevEntryIndex: prevEntryIndex,
+		CommitIndex: commitIndex}
 
 	// On error, request is retried using exponential back-off algorithm
 	count := 0

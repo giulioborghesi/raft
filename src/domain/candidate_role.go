@@ -29,11 +29,11 @@ func (c *candidateRole) entryStatus(_ string, _ int64,
 }
 
 func (c *candidateRole) finalizeElection(electionTerm int64,
-	results []requestVoteResult, s *serverState) {
+	results []requestVoteResult, s *serverState) bool {
 	// Election must have started in current term
 	maxTerm := s.currentTerm()
 	if electionTerm != maxTerm {
-		return
+		return false
 	}
 
 	// Start counting valid votes from one because a candidate votes for itself
@@ -55,14 +55,18 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 	// follower
 	if maxTerm > s.currentTerm() {
 		s.updateServerState(follower, maxTerm, invalidServerID, invalidServerID)
-		return
+		return false
 	}
 
 	// Election is won if count of votes received is more than half of servers
 	// in the cluster
-	if count > ((1 + len(results)) / 2) {
+	if count >= (len(results)/2 + 1) {
 		s.updateServerState(leader, maxTerm, s.serverID, s.serverID)
+		return true
 	}
+
+	// Server was not elected, return false
+	return false
 }
 
 func (c *candidateRole) makeCandidate(_ time.Duration, s *serverState) bool {

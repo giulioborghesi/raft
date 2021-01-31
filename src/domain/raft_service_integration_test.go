@@ -20,18 +20,23 @@ const (
 // localRaftClient provides an implementation of RaftClient to be used for
 // unit tests
 type localRaftClient struct {
-	s        *raftService
-	serverID int64
+	s           *raftService
+	serverID    int64
+	requestVote bool
 }
 
-func (c *localRaftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
-	prevEntryIndex int64, commitIndex int64) (int64, bool) {
-	return c.s.AppendEntry(nil, serverTerm, c.serverID, prevEntryTerm,
+func (c *localRaftClient) AppendEntry(entries []*service.LogEntry,
+	serverTerm int64, prevEntryTerm int64, prevEntryIndex int64,
+	commitIndex int64) (int64, bool) {
+	return c.s.AppendEntry(entries, serverTerm, c.serverID, prevEntryTerm,
 		prevEntryIndex, commitIndex)
 }
 
 func (c *localRaftClient) RequestVote(ctx context.Context,
 	serverTerm int64, serverID int64) (int64, bool, error) {
+	if !c.requestVote {
+		return invalidTermID, false, fmt.Errorf("cannot vote")
+	}
 	currentTerm, success := c.s.RequestVote(serverTerm, serverID)
 	return currentTerm, success, nil
 }
@@ -52,13 +57,13 @@ func createMockRaftService(vr []abstractVoteRequestor,
 	return service
 }
 
-func createMockRaftCluster() []*raftService {
+func createMockRaftCluster() ([]*raftService, [][]*localRaftClient) {
 	services := make([]*raftService, 0, testClusterSize)
 	for i := 0; i < testClusterSize; i++ {
 		// Create a server state instance
 		dao := datasources.MakeTestServerStateDao()
 		log := &raftLog{}
-		log.entries = make([]*service.LogEntry, 0)
+		log.e = make([]*service.LogEntry, 0)
 		s := makeServerState(dao, log, int64(i))
 
 		// Create the raft service
@@ -68,13 +73,18 @@ func createMockRaftCluster() []*raftService {
 	}
 
 	// For each service initialize the candidate and leader roles
+	css := make([][]*localRaftClient, 0)
 	for i, service := range services {
 		vr := make([]abstractVoteRequestor, 0, testClusterSize)
 		er := make([]abstractEntryReplicator, 0, testClusterSize)
+
+		cs := make([]*localRaftClient, 0)
 		for j := 0; j < testClusterSize; j++ {
 			if i != j {
 				// Create local client
-				c := &localRaftClient{serverID: int64(i), s: services[j]}
+				c := &localRaftClient{serverID: int64(i), s: services[j],
+					requestVote: true}
+				cs = append(cs, c)
 
 				// Create vote requestor
 				vr = append(vr, makeVoteRequestor(c))
@@ -83,6 +93,7 @@ func createMockRaftCluster() []*raftService {
 				er = append(er, MakeEntryReplicator(int64(j), c, service))
 			}
 		}
+		css = append(css, cs)
 
 		// Initialize match indices
 		matchIndices := make([]int64, testClusterSize)
@@ -91,10 +102,10 @@ func createMockRaftCluster() []*raftService {
 		// Initialize leader and candidate roles
 		service.roles[candidate] = &candidateRole{voteRequestors: vr}
 		service.roles[leader] = &leaderRole{replicators: er,
-			matchIndices: nil}
+			matchIndices: []int64{0, 0, 0}}
 	}
 
-	return services
+	return services, css
 }
 
 func TestLeaderAppendEntry(t *testing.T) {
@@ -182,13 +193,14 @@ func TestLeaderElection(t *testing.T) {
 
 func TestRaftCluster(t *testing.T) {
 	// Create Raft cluster
-	services := createMockRaftCluster()
-	time.Sleep(time.Millisecond * 200)
+	services, clients := createMockRaftCluster()
+	time.Sleep(time.Millisecond)
 
 	// Start a new election
 	leaderID := 0
 	services[leaderID].StartElection(time.Duration(0))
 
+	time.Sleep(time.Millisecond)
 	for serverID := 0; serverID < testClusterSize; serverID++ {
 		// Server with ID equal to leaderID should be the new leader
 		if serverID == leaderID {
@@ -221,6 +233,7 @@ func TestRaftCluster(t *testing.T) {
 	newLeaderID := 1
 	services[newLeaderID].StartElection(time.Minute)
 
+	time.Sleep(time.Millisecond)
 	for serverID := 0; serverID < testClusterSize; serverID++ {
 		// Leader should have not changed
 		if serverID == leaderID {
@@ -245,6 +258,7 @@ func TestRaftCluster(t *testing.T) {
 	// This time, election will succeed
 	services[newLeaderID].StartElection(time.Duration(0))
 
+	time.Sleep(time.Millisecond)
 	for serverID := 0; serverID < testClusterSize; serverID++ {
 		// Leader should have changed to newLeaderID
 		if serverID == newLeaderID {
@@ -268,6 +282,41 @@ func TestRaftCluster(t *testing.T) {
 		currentTerm := services[serverID].state.currentTerm()
 		if currentTerm != 2 {
 			t.Fatalf("invalid term: expected %d, actual %d", 2, currentTerm)
+		}
+	}
+
+	// Consider now a situation where one server does not vote
+	clients[leaderID][1].requestVote = false
+	services[leaderID].StartElection(time.Duration(0))
+
+	time.Sleep(time.Millisecond)
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Leader should have changed to leaderID
+		if serverID == leaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf("server %d expected to become leader", serverID)
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf("server %d expected to become follower", serverID)
+			}
+		}
+
+		// All servers but 1 should have voted for new leader
+		_, votedFor := services[serverID].state.votedFor()
+		if serverID == 2 {
+			if votedFor != invalidServerID {
+				t.Fatalf("server %d should have not casted a vote", serverID)
+			}
+		} else if votedFor != int64(leaderID) {
+			t.Fatalf("vote casted for wrong server: "+
+				"expected: %d, actual: %d", leaderID, votedFor)
+		}
+
+		// Current term should now be 3
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 3 {
+			t.Fatalf("invalid term: expected %d, actual %d", 3, currentTerm)
 		}
 	}
 
