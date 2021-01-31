@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -35,24 +36,39 @@ type entryReplicator struct {
 	*sync.Cond
 }
 
-// MakeEntryReplicator creates an instance of entryAppender. appendTerm will be
-// initialized with an invalid term ID to ensure that log entries starts to be
-// replicated only after receiving a signal from the current leader
-func MakeEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
+// makeEntryReplicator creates an instance of entryReplicator. The object will
+// be initialized with an invalid term ID to ensure that log entries starts to
+// be replicated only after receiving a signal from the current leader
+func makeEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
 	s AbstractRaftService) *entryReplicator {
-	// Create entry appender and initialize appendTerm to invalid
-	a := &entryReplicator{active: false, client: c, service: s,
+	// Create entry replicator
+	r := &entryReplicator{active: false, client: c, service: s,
 		remoteServerID: remoteServerID}
-	a.appendTerm = invalidTermID
-	a.matchIndex = invalidLogID
 
-	// Initialize condition variable
+	// Initialize entry replicator state
+	r.matchIndex = invalidLogID
+	r.nextIndex = r.matchIndex + 1
+	r.logNextIndex = r.nextIndex
+	r.appendTerm = invalidTermID
+	r.lastAppendTerm = invalidTermID
+	r.lastLeaderTerm = invalidTermID
+	r.commitIndex = invalidLogID
+
+	// Initialize entry replicator condition variable and return
 	m := sync.Mutex{}
-	a.Cond = sync.NewCond(&m)
+	r.Cond = sync.NewCond(&m)
+	return r
+}
 
-	// Activate entry appender and return
-	a.start()
-	return a
+// NewEntryReplicator will create and start a new instance of entry replicator
+func NewEntryReplicator(remoteServerID int64,
+	c clients.AbstractRaftClient, s AbstractRaftService) *entryReplicator {
+	// Create entry replicator
+	r := makeEntryReplicator(remoteServerID, c, s)
+
+	// Activate entry replicator and return
+	r.start()
+	return r
 }
 
 func (a *entryReplicator) appendEntry(appendTerm int64,
@@ -66,38 +82,46 @@ func (a *entryReplicator) appendEntry(appendTerm int64,
 	a.Signal()
 }
 
+// nextLogEntryIndex returns the append term and the starting index of the next
+// log entries to send to the remote server
+func (e *entryReplicator) nextLogEntryIndex() (int64, int64, bool) {
+	e.L.Lock()
+	defer e.L.Unlock()
+
+	// Must wait when term has expired or there is no entry to append
+	for e.appendTerm < e.lastLeaderTerm || (e.appendTerm ==
+		e.lastAppendTerm && (e.matchIndex+1) == e.logNextIndex) {
+		e.Wait()
+
+		// If server is no longer active, stop
+		if e.active == false {
+			return invalidTermID, invalidLogID, false
+		}
+
+		// Handle heartbeats
+		if e.appendTerm >= e.lastLeaderTerm {
+			break
+		}
+	}
+
+	return e.appendTerm, e.logNextIndex, true
+}
+
 // processEntries replicates log entries on the remote server asynchronously.
 func (a *entryReplicator) processEntries() {
 	for a.active {
-		a.L.Lock()
-
-		// Must wait when term has expired or there is no entry to append
-		for a.appendTerm < a.lastLeaderTerm || (a.appendTerm ==
-			a.lastAppendTerm && (a.matchIndex+1) == a.logNextIndex) {
-			a.Wait()
-
-			// If server is no longer active, stop
-			if a.active == false {
-				return
-			}
-
-			// Handle heartbeats
-			if a.appendTerm >= a.lastLeaderTerm {
-				break
-			}
+		// Fetch append term and starting index of next log entries to send
+		appendTerm, logNextIndex, active := a.nextLogEntryIndex()
+		if !active {
+			break
 		}
-
-		// Store append term and log index for later use
-		appendTerm := a.appendTerm
-		logNextIndex := a.logNextIndex
-		a.L.Unlock()
 
 		// Update the match index
 		if success := a.updateMatchIndex(appendTerm, logNextIndex); !success {
 			continue
 		}
 
-		// Fetch the log entries to send to the remote server
+		// Fetch log entries to send to the remote server
 		entries, leaderTerm, prevEntryTerm := a.service.entries(a.nextIndex)
 		if leaderTerm > a.lastLeaderTerm {
 			a.lastLeaderTerm = leaderTerm
@@ -110,40 +134,6 @@ func (a *entryReplicator) processEntries() {
 				a.remoteServerID)
 		}
 	}
-}
-
-// updateMatchIndex finds the match index. This method performs non-trivial
-// work only when the current term exceeds the last known term
-func (a *entryReplicator) updateMatchIndex(appendTerm int64,
-	logNextIndex int64) bool {
-	// Append term did not change from last append, nothing to do
-	if appendTerm == a.lastAppendTerm {
-		return true
-	}
-
-	// A new term has started, reset appender state
-	a.resetState(appendTerm, logNextIndex)
-
-	// Update match index
-	prevEntryIndex := a.nextIndex - 1
-	done := a.nextIndex == a.matchIndex+1
-	for !done {
-		leaderTerm, prevEntryTerm := a.service.entryInfo(prevEntryIndex)
-		if leaderTerm > appendTerm {
-			a.updateLeaderTerm(leaderTerm)
-			return false
-		}
-
-		// Send empty entry to remote server
-		if ok := a.sendEntries(nil, prevEntryTerm, prevEntryIndex); !ok {
-			return false
-		}
-
-		// Update loop condition
-		prevEntryIndex = a.nextIndex - 1
-		done = a.nextIndex == a.matchIndex+1
-	}
-	return true
 }
 
 func (a *entryReplicator) resetState(appendTerm int64, nextIndex int64) {
@@ -194,12 +184,12 @@ func (a *entryReplicator) start() {
 	}()
 }
 
-func (a *entryReplicator) stop() {
+func (a *entryReplicator) stop() error {
 	a.L.Lock()
 
 	// Nothing to do if appender is already inactive
 	if a.active == false {
-		return
+		return nil
 	}
 
 	// Set appender to inactive and wait for processEntries to return
@@ -208,11 +198,50 @@ func (a *entryReplicator) stop() {
 
 	// Must release lock before synchronizing
 	a.L.Unlock()
-	<-a.done
+	select {
+	case _ = <-a.done:
+		return nil
+	case <-time.After(time.Second):
+		return fmt.Errorf("entry replicator couldn't be stopped")
+	}
 }
 
 func (a *entryReplicator) updateLeaderTerm(newLeaderTerm int64) {
 	a.lastLeaderTerm = newLeaderTerm
 	a.service.processAppendEntryEvent(newLeaderTerm, invalidLogID,
 		invalidServerID)
+}
+
+// updateMatchIndex finds the match index. This method performs non-trivial
+// work only when the current term exceeds the last known term
+func (a *entryReplicator) updateMatchIndex(appendTerm int64,
+	logNextIndex int64) bool {
+	// Append term did not change from last append, nothing to do
+	if appendTerm == a.lastAppendTerm {
+		return true
+	}
+
+	// A new term has started, reset appender state
+	a.resetState(appendTerm, logNextIndex)
+
+	// Update match index
+	prevEntryIndex := a.nextIndex - 1
+	done := a.nextIndex == a.matchIndex+1
+	for !done {
+		leaderTerm, prevEntryTerm := a.service.entryInfo(prevEntryIndex)
+		if leaderTerm > appendTerm {
+			a.updateLeaderTerm(leaderTerm)
+			return false
+		}
+
+		// Send empty entry to remote server
+		if ok := a.sendEntries(nil, prevEntryTerm, prevEntryIndex); !ok {
+			return false
+		}
+
+		// Update loop condition
+		prevEntryIndex = a.nextIndex - 1
+		done = a.nextIndex == a.matchIndex+1
+	}
+	return true
 }

@@ -44,6 +44,11 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 			continue
 		}
 
+		// Server term must not be smaller than local term
+		if result.serverTerm < electionTerm {
+			panic(invalidRemoteTermErrFmt)
+		}
+
 		// Count votes received and determine max term seen
 		maxTerm = utils.MaxInt64(maxTerm, result.serverTerm)
 		if result.success {
@@ -53,7 +58,7 @@ func (c *candidateRole) finalizeElection(electionTerm int64,
 
 	// A remote server has a term greater than local term, transition to
 	// follower
-	if maxTerm > s.currentTerm() {
+	if maxTerm > electionTerm {
 		s.updateServerState(follower, maxTerm, invalidServerID, invalidServerID)
 		return false
 	}
@@ -86,8 +91,14 @@ func (c *candidateRole) prepareAppend(serverTerm int64, serverID int64,
 		return false
 	}
 
+	// Voted for should be reset only if remote term greater than local term
+	votedFor := s.serverID
+	if serverTerm > currentTerm {
+		votedFor = invalidServerID
+	}
+
 	// Update server state and return
-	s.updateServerState(follower, serverTerm, invalidServerID, serverID)
+	s.updateServerState(follower, serverTerm, votedFor, serverID)
 	return true
 }
 
