@@ -157,8 +157,8 @@ func (a *entryReplicator) sendEntries(entries []*service.LogEntry,
 	prevEntryTerm int64, prevEntryIndex int64) bool {
 	// Send entries to remote server
 	remoteTerm, success :=
-		a.client.AppendEntry(a.lastAppendTerm, prevEntryTerm, prevEntryIndex,
-			a.commitIndex)
+		a.client.AppendEntry(entries, a.lastAppendTerm, prevEntryTerm,
+			prevEntryIndex, a.commitIndex)
 
 	// Remote server term greater than local term, return
 	if remoteTerm > a.lastAppendTerm {

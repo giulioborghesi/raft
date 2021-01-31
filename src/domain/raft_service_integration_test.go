@@ -25,9 +25,10 @@ type localRaftClient struct {
 	requestVote bool
 }
 
-func (c *localRaftClient) AppendEntry(serverTerm int64, prevEntryTerm int64,
-	prevEntryIndex int64, commitIndex int64) (int64, bool) {
-	return c.s.AppendEntry(nil, serverTerm, c.serverID, prevEntryTerm,
+func (c *localRaftClient) AppendEntry(entries []*service.LogEntry,
+	serverTerm int64, prevEntryTerm int64, prevEntryIndex int64,
+	commitIndex int64) (int64, bool) {
+	return c.s.AppendEntry(entries, serverTerm, c.serverID, prevEntryTerm,
 		prevEntryIndex, commitIndex)
 }
 
