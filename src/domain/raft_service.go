@@ -41,7 +41,7 @@ type AbstractRaftService interface {
 	processAppendEntryEvent(int64, int64, int64)
 
 	// RequestVote handles an incoming RequestVote RPC call
-	RequestVote(remoteServerTerm int64, remoteServerID int64) (int64, bool)
+	RequestVote(int64, int64) (int64, bool)
 
 	// sendHeartbeat exposes an endpoint to send heartbeats to followers
 	sendHeartbeat(time.Duration)

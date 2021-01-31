@@ -8,6 +8,28 @@ import (
 	"time"
 )
 
+// mockRaftServiceEntryReplicator implements a mock Raft service to be used
+// for unit testing entry replicator
+type mockRaftServiceEntryReplicator struct {
+	unimplementedRaftService
+	leaderTerm            int64
+	entryTerm             int64
+	countEntryInfo        int64
+	countAppendEntryEvent int64
+}
+
+func (s *mockRaftServiceEntryReplicator) entryInfo(int64) (int64, int64) {
+	s.countEntryInfo++
+	return s.leaderTerm, s.entryTerm
+}
+
+func (s *mockRaftServiceEntryReplicator) processAppendEntryEvent(_, _,
+	_ int64) {
+	s.countAppendEntryEvent++
+}
+
+// validateNextLogEntryIndexResult validates the results of a call to
+// nextLogEntryIndex by providing the expected results
 func validateNextLogEntryIndexResult(expectedTerm, actualTerm int64,
 	expectedIndex, actualIndex int64, expectedResult, actualResult bool,
 	t *testing.T) {
@@ -36,14 +58,9 @@ func TestEntryReplicatorResetState(t *testing.T) {
 	var newNextIndex int64 = int64(rand.Int())
 	er.resetState(newAppendTerm, newNextIndex)
 
-	if er.lastAppendTerm != newAppendTerm {
+	if er.leaderTerm != newAppendTerm {
 		t.Fatalf("invalid append term: expected: %d, actual: %d",
-			newAppendTerm, er.lastAppendTerm)
-	}
-
-	if er.lastLeaderTerm != newAppendTerm {
-		t.Fatalf("invalid leader term: expected: %d, actual: %d",
-			newAppendTerm, er.lastAppendTerm)
+			newAppendTerm, er.leaderTerm)
 	}
 
 	if er.nextIndex != newNextIndex {
@@ -114,4 +131,38 @@ func TestEntryReplicatorNextLogEntryIndex(t *testing.T) {
 	appendTerm, logNextIndex, active = er.nextLogEntryIndex()
 	validateNextLogEntryIndexResult(er.appendTerm, appendTerm,
 		0, logNextIndex, true, active, t)
+}
+
+func TestEntryReplicatorUpdateMatchIndex(t *testing.T) {
+	// Create an entry replicator instance
+	service := &mockRaftServiceEntryReplicator{leaderTerm: 5, entryTerm: 4}
+	er := makeEntryReplicator(invalidServerID, nil, service)
+
+	// appendTerm is equal to leader term, return true
+	success := er.updateMatchIndex(er.leaderTerm, invalidLogID)
+	if !success {
+		t.Fatalf("updateMatchIndex expected to succeed")
+	}
+
+	// appendTerm is less than entry term, return false
+	logNextIndex := int64(5)
+	success = er.updateMatchIndex(service.leaderTerm-1, logNextIndex)
+	if success {
+		t.Fatalf("updateMatchIndex expected to fail")
+	}
+
+	// Check number of API calls
+	if service.countEntryInfo != 1 {
+		t.Fatalf("expected %d calls to entryInfo, got %d",
+			1, service.countEntryInfo)
+	}
+
+	if service.countAppendEntryEvent != 1 {
+		t.Fatalf("expected %d calls to AppendEntryEvent, got %d",
+			1, service.countAppendEntryEvent)
+	}
+
+	// Reset counters
+	service.countEntryInfo = 0
+	service.countAppendEntryEvent = 0
 }
