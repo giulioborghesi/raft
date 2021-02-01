@@ -94,18 +94,26 @@ func (f *followerRole) requestVote(serverTerm int64, serverID int64,
 	// Get current term and ID of server that has received this server's vote
 	// in the current term
 	currentTerm, votedFor := s.votedFor()
-	if (currentTerm > serverTerm) ||
-		(serverTerm == currentTerm && votedFor != invalidServerID) {
+	if currentTerm > serverTerm {
 		return currentTerm, false
+	} else if serverTerm == currentTerm && votedFor != invalidServerID {
+		return currentTerm, votedFor == serverID
 	}
 
-	// Grant vote and update server state
+	// Grant vote only if remote server log is not current
+	current := isRemoteLogCurrent(s.log, lastEntryTerm, lastEntryIndex)
+	votedFor = invalidServerID
+	if current {
+		votedFor = serverID
+	}
+
+	// Update server state and return
 	leaderID := s.leaderID
 	if serverTerm != currentTerm {
 		leaderID = invalidServerID
 	}
-	s.updateServerState(follower, serverTerm, serverID, leaderID)
-	return serverTerm, true
+	s.updateServerState(follower, serverTerm, votedFor, leaderID)
+	return serverTerm, current
 }
 
 func (f *followerRole) sendHeartbeat(time.Duration, int64, *serverState) {

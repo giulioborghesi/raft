@@ -190,71 +190,52 @@ func TestFollowerRequestVote(t *testing.T) {
 	currentTerm, voted := f.requestVote(serverTerm, testFollowerRemoteID,
 		invalidTermID, invalidLogID, s)
 
-	if currentTerm != initialTerm {
-		t.Fatalf("invalid term returned by requestVote: "+
-			"expected: %d, actual: %d", initialTerm, currentTerm)
-	}
-
-	if s.currentTerm() != initialTerm {
-		t.Fatalf("currentTerm not expected to change")
-	}
-
 	if voted {
 		t.Fatalf("requestVote not expected to grant a vote")
 	}
 
-	if s.leaderID != testFollowerLeaderID {
-		t.Fatalf("invalid leader ID following requestVote: "+
-			"expected: %d, actual: %d", testFollowerLeaderID, s.leaderID)
-	}
+	// Validate server state
+	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
+		testFollowerLeaderID, t)
 
 	// Server did not vote yet, grant vote and return true
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
-
-	if s.currentTerm() != initialTerm && currentTerm != initialTerm {
-		t.Fatalf("invalid term returned by requestVote: "+
-			"expected: %d, actual: %d", initialTerm, currentTerm)
-	}
+		initialTerm, invalidLogID, s)
 
 	if !voted {
 		t.Fatalf("requestVote expected to grant a vote")
 	}
 
-	_, votedForID := s.votedFor()
-	if votedForID != testFollowerRemoteID {
-		t.Fatalf("votedFor invalid following requestVote: "+
-			"expected: %d, actual: %d", testFollowerLeaderID, votedForID)
-	}
-
-	if s.leaderID != testFollowerLeaderID {
-		t.Fatalf("invalid leader ID following requestVote: "+
-			"expected: %d, actual: %d", testFollowerLeaderID, s.leaderID)
-	}
+	// Validate server state
+	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
+		testFollowerLeaderID, t)
 
 	// Server term exceeds local term, vote will be granted
 	serverTerm += 1
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
-	if s.currentTerm() != serverTerm && currentTerm != serverTerm {
-		t.Fatalf("invalid term returned by requestVote: "+
-			"expected: %d, actual: %d", initialTerm, currentTerm)
-	}
+		initialTerm, invalidLogID, s)
 
 	if !voted {
 		t.Fatalf("requestVote expected to grant a vote")
 	}
 
-	_, votedForID = s.votedFor()
-	if votedForID != testFollowerRemoteID {
-		t.Fatalf("votedFor invalid following requestVote: "+
-			"expected: %d, actual: %d", testFollowerLeaderID, votedForID)
+	// Validate server state
+	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
+		invalidServerID, t)
+
+	// Server term exceeds local term but log is not current
+	serverTerm = currentTerm + 1
+	s.updateVotedFor(invalidServerID)
+	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
+		invalidTermID, invalidLogID, s)
+
+	if voted {
+		t.Fatalf("requestVote not expected to grant a vote")
 	}
 
-	if s.leaderID != invalidServerID {
-		t.Fatalf("invalid leader ID following requestVote: "+
-			"expected: %d, actual: %d", invalidServerID, s.leaderID)
-	}
+	// Validate server state
+	validateServerState(s, follower, currentTerm, invalidServerID,
+		invalidServerID, t)
 }
