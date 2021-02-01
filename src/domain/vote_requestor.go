@@ -62,6 +62,7 @@ func (v *voteRequestor) requestVote(serverTerm int64,
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
 
-	serverTerm, success, err := v.client.RequestVote(ctx, serverTerm, serverID)
+	serverTerm, success, err := v.client.RequestVote(ctx, serverTerm,
+		serverID, invalidTermID, invalidLogID)
 	return requestVoteResult{success: success, serverTerm: serverTerm, err: err}
 }

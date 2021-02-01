@@ -28,12 +28,14 @@ func (c *mockRaftClient) AppendEntry(entries []*service.LogEntry,
 		prevEntryIndex, commitIndex)
 }
 
-func (c *mockRaftClient) RequestVote(ctx context.Context,
-	serverTerm int64, serverID int64) (int64, bool, error) {
+func (c *mockRaftClient) RequestVote(ctx context.Context, serverTerm int64,
+	serverID int64, lastEntryTerm int64, lastEntryIndex int64) (int64,
+	bool, error) {
 	if !c.requestVote {
 		return invalidTermID, false, fmt.Errorf("cannot vote")
 	}
-	currentTerm, success := c.s.RequestVote(serverTerm, serverID)
+	currentTerm, success := c.s.RequestVote(serverTerm, serverID,
+		lastEntryTerm, lastEntryIndex)
 	return currentTerm, success, nil
 }
 
@@ -74,7 +76,8 @@ func (s *unimplementedRaftService) processAppendEntryEvent(_, _, _ int64) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "processAppendEntryEvent"))
 }
 
-func (s *unimplementedRaftService) RequestVote(int64, int64) (int64, bool) {
+func (s *unimplementedRaftService) RequestVote(int64, int64, int64,
+	int64) (int64, bool) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "RequestVote"))
 }
 
