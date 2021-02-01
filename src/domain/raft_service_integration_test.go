@@ -65,7 +65,7 @@ func createMockRaftCluster() ([]*raftService, [][]*mockRaftClient) {
 				vr = append(vr, makeVoteRequestor(c))
 
 				// Create entry replicator
-				er = append(er, NewEntryReplicator(int64(j), c, service))
+				er = append(er, makeEntryReplicator(int64(j), c, service))
 			}
 		}
 		css = append(css, cs)
@@ -299,7 +299,10 @@ func TestRaftCluster(t *testing.T) {
 	for _, service := range services {
 		role := service.roles[leader].(*leaderRole)
 		for _, er := range role.replicators {
-			er.(*entryReplicator).stop()
+			err := er.(*entryReplicator).stop()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
