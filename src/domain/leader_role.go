@@ -131,7 +131,7 @@ func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
 }
 
 func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
-	s *serverState) (int64, bool) {
+	lastEntryTerm int64, lastEntryIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm >= serverTerm {

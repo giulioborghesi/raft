@@ -107,8 +107,8 @@ func (c *candidateRole) processAppendEntryEvent(_, _, _ int64,
 	return false
 }
 
-func (c *candidateRole) requestVote(serverTerm int64,
-	serverID int64, s *serverState) (int64, bool) {
+func (c *candidateRole) requestVote(serverTerm int64, serverID int64,
+	lastEntryTerm int64, lastEntryIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm >= serverTerm {

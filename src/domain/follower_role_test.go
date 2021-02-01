@@ -187,7 +187,8 @@ func TestFollowerRequestVote(t *testing.T) {
 
 	// Already voted, return false
 	serverTerm := initialTerm
-	currentTerm, voted := f.requestVote(serverTerm, testFollowerRemoteID, s)
+	currentTerm, voted := f.requestVote(serverTerm, testFollowerRemoteID,
+		invalidTermID, invalidLogID, s)
 
 	if currentTerm != initialTerm {
 		t.Fatalf("invalid term returned by requestVote: "+
@@ -209,7 +210,8 @@ func TestFollowerRequestVote(t *testing.T) {
 
 	// Server did not vote yet, grant vote and return true
 	s.updateVotedFor(invalidServerID)
-	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID, s)
+	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
+		invalidTermID, invalidLogID, s)
 
 	if s.currentTerm() != initialTerm && currentTerm != initialTerm {
 		t.Fatalf("invalid term returned by requestVote: "+
@@ -234,7 +236,8 @@ func TestFollowerRequestVote(t *testing.T) {
 	// Server term exceeds local term, vote will be granted
 	serverTerm += 1
 	s.updateVotedFor(invalidServerID)
-	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID, s)
+	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
+		invalidTermID, invalidLogID, s)
 	if s.currentTerm() != serverTerm && currentTerm != serverTerm {
 		t.Fatalf("invalid term returned by requestVote: "+
 			"expected: %d, actual: %d", initialTerm, currentTerm)

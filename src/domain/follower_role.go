@@ -89,8 +89,8 @@ func (f *followerRole) processAppendEntryEvent(_, _, _ int64,
 	return false
 }
 
-func (f *followerRole) requestVote(serverTerm int64,
-	serverID int64, s *serverState) (int64, bool) {
+func (f *followerRole) requestVote(serverTerm int64, serverID int64,
+	lastEntryTerm int64, lastEntryIndex int64, s *serverState) (int64, bool) {
 	// Get current term and ID of server that has received this server's vote
 	// in the current term
 	currentTerm, votedFor := s.votedFor()

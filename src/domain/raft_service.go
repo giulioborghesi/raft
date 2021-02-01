@@ -136,7 +136,7 @@ func (s *raftService) RequestVote(remoteServerTerm int64, remoteServerID int64,
 
 	// Grant vote if possible
 	return s.roles[s.state.role].requestVote(remoteServerTerm,
-		remoteServerID, s.state)
+		remoteServerID, lastEntryTerm, lastEntryIndex, s.state)
 }
 
 func (s *raftService) sendHeartbeat(to time.Duration) {
