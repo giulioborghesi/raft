@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"testing"
@@ -16,30 +15,6 @@ const (
 	testServiceIntegrationLeaderID      = 1
 	testServiceIntegrationOtherServerID = 2
 )
-
-// localRaftClient provides an implementation of RaftClient to be used for
-// unit tests
-type localRaftClient struct {
-	s           *raftService
-	serverID    int64
-	requestVote bool
-}
-
-func (c *localRaftClient) AppendEntry(entries []*service.LogEntry,
-	serverTerm int64, prevEntryTerm int64, prevEntryIndex int64,
-	commitIndex int64) (int64, bool) {
-	return c.s.AppendEntry(entries, serverTerm, c.serverID, prevEntryTerm,
-		prevEntryIndex, commitIndex)
-}
-
-func (c *localRaftClient) RequestVote(ctx context.Context,
-	serverTerm int64, serverID int64) (int64, bool, error) {
-	if !c.requestVote {
-		return invalidTermID, false, fmt.Errorf("cannot vote")
-	}
-	currentTerm, success := c.s.RequestVote(serverTerm, serverID)
-	return currentTerm, success, nil
-}
 
 func createMockRaftService(vr []abstractVoteRequestor,
 	er []abstractEntryReplicator) *raftService {
@@ -57,7 +32,7 @@ func createMockRaftService(vr []abstractVoteRequestor,
 	return service
 }
 
-func createMockRaftCluster() ([]*raftService, [][]*localRaftClient) {
+func createMockRaftCluster() ([]*raftService, [][]*mockRaftClient) {
 	services := make([]*raftService, 0, testClusterSize)
 	for i := 0; i < testClusterSize; i++ {
 		// Create a server state instance
@@ -73,16 +48,16 @@ func createMockRaftCluster() ([]*raftService, [][]*localRaftClient) {
 	}
 
 	// For each service initialize the candidate and leader roles
-	css := make([][]*localRaftClient, 0)
+	css := make([][]*mockRaftClient, 0)
 	for i, service := range services {
 		vr := make([]abstractVoteRequestor, 0, testClusterSize)
 		er := make([]abstractEntryReplicator, 0, testClusterSize)
 
-		cs := make([]*localRaftClient, 0)
+		cs := make([]*mockRaftClient, 0)
 		for j := 0; j < testClusterSize; j++ {
 			if i != j {
 				// Create local client
-				c := &localRaftClient{serverID: int64(i), s: services[j],
+				c := &mockRaftClient{serverID: int64(i), s: services[j],
 					requestVote: true}
 				cs = append(cs, c)
 
@@ -90,7 +65,7 @@ func createMockRaftCluster() ([]*raftService, [][]*localRaftClient) {
 				vr = append(vr, makeVoteRequestor(c))
 
 				// Create entry replicator
-				er = append(er, MakeEntryReplicator(int64(j), c, service))
+				er = append(er, makeEntryReplicator(int64(j), c, service))
 			}
 		}
 		css = append(css, cs)
@@ -324,7 +299,10 @@ func TestRaftCluster(t *testing.T) {
 	for _, service := range services {
 		role := service.roles[leader].(*leaderRole)
 		for _, er := range role.replicators {
-			er.(*entryReplicator).stop()
+			err := er.(*entryReplicator).stop()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }

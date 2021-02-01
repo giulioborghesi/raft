@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	roleErrCallFmt  = "%s should not be called when the server is a %s"
-	wrongRoleErrFmt = "server is a %s"
+	roleErrCallFmt          = "%s should not be called when the server is a %s"
+	wrongRoleErrFmt         = "server is a %s"
+	invalidRemoteTermErrFmt = "remote server term less than local term"
 )
 
 // serverRole defines the interface for a server's role in Raft. There exists
