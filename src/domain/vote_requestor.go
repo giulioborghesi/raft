@@ -24,7 +24,7 @@ type requestVoteResult struct {
 // request should be binded to the requestor during object initialization
 type abstractVoteRequestor interface {
 	// requestVote sends a vote request to a remote server
-	requestVote(int64, int64) requestVoteResult
+	requestVote(int64, int64, int64, int64) requestVoteResult
 }
 
 // mockVoteRequestor implements a mock vote requestor that will return false
@@ -34,7 +34,7 @@ type mockVoteRequestor struct {
 }
 
 func (v *mockVoteRequestor) requestVote(serverTerm,
-	_ int64) requestVoteResult {
+	_, _, _ int64) requestVoteResult {
 	if v.count < v.maxCount {
 		v.count++
 		return requestVoteResult{serverTerm: serverTerm, success: false,
@@ -57,12 +57,12 @@ func makeVoteRequestor(c clients.AbstractRaftClient) abstractVoteRequestor {
 }
 
 func (v *voteRequestor) requestVote(serverTerm int64,
-	serverID int64) requestVoteResult {
+	serverID int64, lastLogTerm int64, lastLogIndex int64) requestVoteResult {
 	d := time.Now().Add(maxCallDuration)
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
 
 	serverTerm, success, err := v.client.RequestVote(ctx, serverTerm,
-		serverID, invalidTermID, invalidLogID)
+		serverID, lastLogTerm, lastLogIndex)
 	return requestVoteResult{success: success, serverTerm: serverTerm, err: err}
 }
