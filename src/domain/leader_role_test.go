@@ -11,7 +11,6 @@ import (
 
 const (
 	testLeaderStartingTerm = 15
-	testLeaderVotedFor     = 1
 	testLeaderLeaderID     = 2
 	testLeaderRemoteID     = 4
 )
@@ -21,11 +20,12 @@ const (
 func MakeLeaderServerState() *serverState {
 	dao := datasources.MakeTestServerStateDao()
 	dao.UpdateTerm(testLeaderStartingTerm)
-	dao.UpdateVotedFor(testLeaderVotedFor)
+	dao.UpdateVotedFor(testLeaderLeaderID)
 
 	s := new(serverState)
 	s.dao = dao
 	s.leaderID = testLeaderLeaderID
+	s.log = &mockRaftLog{}
 	s.role = leader
 	s.serverID = s.leaderID
 	return s
@@ -148,29 +148,25 @@ func TestLeaderRequestVote(t *testing.T) {
 		t.Fatalf("requestVote expected to return false")
 	}
 
+	// Validate changes to server state
+	validateServerState(s, leader, currentTerm, testLeaderLeaderID,
+		testLeaderLeaderID, t)
+
 	// requestVote should change server role to follower and return true
 	remoteServerTerm = testLeaderStartingTerm + 1
 	currentTerm, success = l.requestVote(remoteServerTerm,
-		remoteServerID, invalidTermID, invalidLogID, s)
-
-	if currentTerm == initialTerm {
-		t.Fatalf("requestVote expected to modify server term")
-	}
-
-	if currentTerm != s.currentTerm() {
-		t.Fatalf("server term not correctly updated by requestVote")
-	}
-
-	if s.role != follower {
-		t.Fatalf("server did not transition to follower role")
-	}
-
-	if s.leaderID != invalidServerID {
-		t.Fatalf("invalid leader ID: expected: %d, actual: %d",
-			invalidServerID, s.leaderID)
-	}
+		remoteServerID, initialTerm, invalidLogID, s)
 
 	if !success {
 		t.Fatalf("requestVote expected to return true")
 	}
+
+	if currentTerm != remoteServerTerm {
+		t.Fatalf("invalid server term: expected: %d, actual: %d",
+			remoteServerTerm, currentTerm)
+	}
+
+	// Validate changes to server state
+	validateServerState(s, follower, currentTerm, remoteServerID,
+		invalidServerID, t)
 }

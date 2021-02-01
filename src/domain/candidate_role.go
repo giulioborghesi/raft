@@ -121,8 +121,6 @@ func (c *candidateRole) requestVote(serverTerm int64, serverID int64,
 	if current {
 		votedFor = serverID
 	}
-
-	// Update server state and return
 	s.updateServerState(follower, serverTerm, votedFor, invalidServerID)
 	return serverTerm, current
 }
