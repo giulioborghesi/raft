@@ -115,9 +115,16 @@ func (c *candidateRole) requestVote(serverTerm int64, serverID int64,
 		return currentTerm, false
 	}
 
-	// Remote server has a term higher than current one, update server state
-	s.updateServerState(follower, serverTerm, serverID, invalidServerID)
-	return serverTerm, true
+	// Server will grant its vote only if remote log is current
+	current := isRemoteLogCurrent(s.log, lastEntryTerm, lastEntryIndex)
+	var votedFor int64 = invalidServerID
+	if current {
+		votedFor = serverID
+	}
+
+	// Update server state and return
+	s.updateServerState(follower, serverTerm, votedFor, invalidServerID)
+	return serverTerm, current
 }
 
 func (c *candidateRole) sendHeartbeat(time.Duration, int64, *serverState) {
