@@ -27,7 +27,7 @@ func (c *mockRaftClientEntryReplicator) AppendEntry(
 }
 
 func (c *mockRaftClientEntryReplicator) RequestVote(ctx context.Context,
-	serverTerm int64, serverID int64) (int64, bool, error) {
+	serverTerm int64, serverID int64, _, _ int64) (int64, bool, error) {
 	panic("method not implemented")
 }
 

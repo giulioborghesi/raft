@@ -41,7 +41,7 @@ type AbstractRaftService interface {
 	processAppendEntryEvent(int64, int64, int64)
 
 	// RequestVote handles an incoming RequestVote RPC call
-	RequestVote(int64, int64) (int64, bool)
+	RequestVote(int64, int64, int64, int64) (int64, bool)
 
 	// sendHeartbeat exposes an endpoint to send heartbeats to followers
 	sendHeartbeat(time.Duration)
@@ -128,15 +128,15 @@ func (s *raftService) processAppendEntryEvent(
 }
 
 // RequestVote implements the RequestVote RPC call
-func (s *raftService) RequestVote(remoteServerTerm int64,
-	remoteServerID int64) (int64, bool) {
+func (s *raftService) RequestVote(remoteServerTerm int64, remoteServerID int64,
+	lastEntryTerm int64, lastEntryIndex int64) (int64, bool) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
 
 	// Grant vote if possible
 	return s.roles[s.state.role].requestVote(remoteServerTerm,
-		remoteServerID, s.state)
+		remoteServerID, lastEntryTerm, lastEntryIndex, s.state)
 }
 
 func (s *raftService) sendHeartbeat(to time.Duration) {

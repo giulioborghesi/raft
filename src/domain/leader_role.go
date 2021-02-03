@@ -131,16 +131,21 @@ func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
 }
 
 func (l *leaderRole) requestVote(serverTerm int64, serverID int64,
-	s *serverState) (int64, bool) {
+	lastEntryTerm int64, lastEntryIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm >= serverTerm {
 		return currentTerm, false
 	}
 
-	// Server term greater than local term, cast vote and become follower
-	s.updateServerState(follower, serverTerm, serverID, invalidServerID)
-	return serverTerm, true
+	// Server will grant its vote only if remote log is current
+	current := isRemoteLogCurrent(s.log, lastEntryTerm, lastEntryIndex)
+	var votedFor int64 = invalidServerID
+	if current {
+		votedFor = serverID
+	}
+	s.updateServerState(follower, serverTerm, votedFor, invalidServerID)
+	return serverTerm, current
 }
 
 // sendEntries notifies the entry replicator about the new log entries to

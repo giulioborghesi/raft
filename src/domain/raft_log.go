@@ -14,6 +14,20 @@ const (
 	invalid
 )
 
+// isRemoteLogCurrent returns true if the remote log is up-to-date,
+// false otherwise
+func isRemoteLogCurrent(l abstractRaftLog, lastEntryTerm int64,
+	lastEntryIndex int64) bool {
+	entryIndex := l.nextIndex() - 1
+	entryTerm := l.entryTerm(entryIndex)
+
+	if (lastEntryTerm > entryTerm) || ((lastEntryTerm == entryTerm) &&
+		(lastEntryIndex >= entryIndex)) {
+		return true
+	}
+	return false
+}
+
 // logEntryStatus represents the status of a log entry. A log entry is
 // committed if has been applied to the replicated state machine; is
 // appended if it has been appended to the log, but has not been applied

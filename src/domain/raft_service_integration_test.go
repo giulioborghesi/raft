@@ -32,13 +32,13 @@ func createMockRaftService(vr []abstractVoteRequestor,
 	return service
 }
 
-func createMockRaftCluster() ([]*raftService, [][]*mockRaftClient) {
+func createMockRaftCluster(logs [][]*service.LogEntry) ([]*raftService,
+	[][]*mockRaftClient) {
 	services := make([]*raftService, 0, testClusterSize)
 	for i := 0; i < testClusterSize; i++ {
 		// Create a server state instance
 		dao := datasources.MakeTestServerStateDao()
-		log := &raftLog{}
-		log.e = make([]*service.LogEntry, 0)
+		log := &raftLog{e: logs[i]}
 		s := makeServerState(dao, log, int64(i))
 
 		// Create the raft service
@@ -166,9 +166,15 @@ func TestLeaderElection(t *testing.T) {
 	}
 }
 
-func TestRaftCluster(t *testing.T) {
+func TestRaftClusterBasicElection(t *testing.T) {
+	// Initialize logs
+	logs := make([][]*service.LogEntry, 3)
+	for i := 0; i < testClusterSize; i++ {
+		logs[i] = make([]*service.LogEntry, 0)
+	}
+
 	// Create Raft cluster
-	services, clients := createMockRaftCluster()
+	services, clients := createMockRaftCluster(logs)
 	time.Sleep(time.Millisecond)
 
 	// Start a new election
@@ -292,6 +298,152 @@ func TestRaftCluster(t *testing.T) {
 		currentTerm := services[serverID].state.currentTerm()
 		if currentTerm != 3 {
 			t.Fatalf("invalid term: expected %d, actual %d", 3, currentTerm)
+		}
+	}
+
+	// Teardown cluster
+	for _, service := range services {
+		role := service.roles[leader].(*leaderRole)
+		for _, er := range role.replicators {
+			err := er.(*entryReplicator).stop()
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func TestRaftClusterGenericElection(t *testing.T) {
+	// Initialize logs
+	logs := make([][]*service.LogEntry, 3)
+	logs[0] = []*service.LogEntry{{EntryTerm: 1}, {EntryTerm: 1},
+		{EntryTerm: 1}}
+	logs[1] = []*service.LogEntry{{EntryTerm: 1}, {EntryTerm: 1},
+		{EntryTerm: 4}, {EntryTerm: 4}}
+	logs[2] = []*service.LogEntry{{EntryTerm: 1}, {EntryTerm: 1},
+		{EntryTerm: 5}, {EntryTerm: 5}, {EntryTerm: 5}}
+
+	// Expected final log
+	expectedLog := []int64{1, 1, 5, 5, 5}
+
+	// Create Raft cluster
+	services, _ := createMockRaftCluster(logs)
+	time.Sleep(time.Millisecond)
+
+	// Initialize server state
+	services[0].state.updateTerm(1)
+	services[1].state.updateTerm(4)
+	services[2].state.updateTerm(5)
+
+	// Start a new election
+	leaderID := 2
+	services[leaderID].StartElection(time.Duration(0))
+
+	time.Sleep(time.Millisecond)
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Server with ID equal to leaderID should be the new leader
+		if serverID == leaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf(fmt.Sprintf("server %d expected to become leader",
+					serverID))
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf(fmt.Sprintf("server %d expected to become follower",
+					serverID))
+			}
+		}
+
+		// All servers should have voted for leaderID
+		_, votedFor := services[serverID].state.votedFor()
+		if votedFor != int64(leaderID) {
+			t.Fatalf("vote casted for wrong server: "+
+				"expected: %d, actual: %d", leaderID, votedFor)
+		}
+
+		// Current term should be 6
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 6 {
+			t.Fatalf("invalid term: expected %d, actual %d", 6, currentTerm)
+		}
+
+		// Log length must match the expected log length
+		entries, _, _ := services[serverID].entries(0)
+		logLength := len(entries)
+		if logLength != len(expectedLog) {
+			t.Fatalf("invalid log length: expected: %d, actual: %d",
+				len(expectedLog), logLength)
+		}
+
+		// The log entries must be identical to those of the expected log
+		for j := 0; j < logLength; j++ {
+			if entries[j].EntryTerm != expectedLog[j] {
+				t.Fatalf("invalid log entry: expected: %d, actual: %d",
+					expectedLog[j], entries[j].EntryTerm)
+			}
+		}
+	}
+
+	// Teardown cluster
+	for _, service := range services {
+		role := service.roles[leader].(*leaderRole)
+		for _, er := range role.replicators {
+			err := er.(*entryReplicator).stop()
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func TestRaftClusterGenericFailedElection(t *testing.T) {
+	// Initialize logs
+	logs := make([][]*service.LogEntry, 3)
+	expectedLogs := [][]int64{{1, 1, 1}, {1, 1, 4, 4}, {1, 1, 5, 5, 5}}
+	for i := 0; i < 3; i++ {
+		logs[i] = make([]*service.LogEntry, 0)
+		for _, entryTerm := range expectedLogs[i] {
+			logs[i] = append(logs[i], &service.LogEntry{EntryTerm: entryTerm})
+		}
+	}
+
+	// Create Raft cluster
+	services, _ := createMockRaftCluster(logs)
+	time.Sleep(time.Millisecond)
+
+	// Initialize server state
+	services[0].state.updateTerm(8)
+	services[1].state.updateTerm(4)
+	services[2].state.updateTerm(5)
+
+	// Start a new election
+	leaderID := 2
+	services[leaderID].StartElection(time.Duration(0))
+
+	time.Sleep(time.Millisecond)
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		if services[serverID].state.role != follower {
+			t.Fatalf(fmt.Sprintf("server %d expected to become follower",
+				serverID))
+		}
+
+		// Candidate term should be eight, other follower term should be six
+		currentTerm := services[serverID].state.currentTerm()
+		if serverID == leaderID || serverID == 0 {
+			if currentTerm != 8 {
+				t.Fatalf("invalid term: expected %d, actual %d", 8, currentTerm)
+			}
+		} else {
+			if currentTerm != 6 {
+				t.Fatalf("invalid term: expected %d, actual %d", 6, currentTerm)
+			}
+		}
+
+		// Logs should have not changed
+		entries, _, _ := services[serverID].entries(0)
+		if len(entries) != len(expectedLogs[serverID]) {
+			t.Fatalf("invalid log length: expected: %d, actual: %d",
+				len(expectedLogs[serverID]), len(entries))
 		}
 	}
 

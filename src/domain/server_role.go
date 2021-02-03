@@ -47,7 +47,7 @@ type serverRole interface {
 
 	// requestVote implements the logic used to determine whether a server
 	// should grant its vote to an external server or not
-	requestVote(int64, int64, *serverState) (int64, bool)
+	requestVote(int64, int64, int64, int64, *serverState) (int64, bool)
 
 	// sendHeartbeat implements the logic to send an heartbeat message to
 	// followers

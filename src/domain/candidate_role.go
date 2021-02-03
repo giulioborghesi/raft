@@ -107,17 +107,22 @@ func (c *candidateRole) processAppendEntryEvent(_, _, _ int64,
 	return false
 }
 
-func (c *candidateRole) requestVote(serverTerm int64,
-	serverID int64, s *serverState) (int64, bool) {
+func (c *candidateRole) requestVote(serverTerm int64, serverID int64,
+	lastEntryTerm int64, lastEntryIndex int64, s *serverState) (int64, bool) {
 	// Get current term
 	currentTerm := s.currentTerm()
 	if currentTerm >= serverTerm {
 		return currentTerm, false
 	}
 
-	// Remote server has a term higher than current one, update server state
-	s.updateServerState(follower, serverTerm, serverID, invalidServerID)
-	return serverTerm, true
+	// Server will grant its vote only if remote log is current
+	current := isRemoteLogCurrent(s.log, lastEntryTerm, lastEntryIndex)
+	var votedFor int64 = invalidServerID
+	if current {
+		votedFor = serverID
+	}
+	s.updateServerState(follower, serverTerm, votedFor, invalidServerID)
+	return serverTerm, current
 }
 
 func (c *candidateRole) sendHeartbeat(time.Duration, int64, *serverState) {
@@ -126,8 +131,11 @@ func (c *candidateRole) sendHeartbeat(time.Duration, int64, *serverState) {
 
 func (c *candidateRole) startElection(
 	s *serverState) []chan requestVoteResult {
+	// Prepare request arguments
 	candidateTerm := s.currentTerm()
 	candidateID := s.serverID
+	lastEntryIndex := s.log.nextIndex() - 1
+	lastEntryTerm := s.log.entryTerm(lastEntryIndex)
 
 	results := make([]chan requestVoteResult, 0)
 	for i := 0; i < len(c.voteRequestors); i++ {
@@ -137,7 +145,8 @@ func (c *candidateRole) startElection(
 
 		// Send vote request asynchronously
 		go func() {
-			result <- voteRequestor.requestVote(candidateTerm, candidateID)
+			result <- voteRequestor.requestVote(candidateTerm, candidateID,
+				lastEntryTerm, lastEntryIndex)
 		}()
 
 		// Append result to output list

@@ -26,6 +26,7 @@ func makeCandidateServerState() *serverState {
 	s := new(serverState)
 	s.dao = dao
 	s.leaderID = invalidServerID
+	s.log = &mockRaftLog{}
 	s.role = candidate
 	s.serverID = testCandidateServerID
 	return s
@@ -141,7 +142,8 @@ func TestCandidateRequestVote(t *testing.T) {
 	var remoteServerID int64 = testCandidateServerID + 1
 
 	// Server should deny vote to remote server because it is not current
-	currentTerm, success := c.requestVote(remoteServerTerm, remoteServerID, s)
+	currentTerm, success := c.requestVote(remoteServerTerm, remoteServerID,
+		invalidTermID, invalidServerID, s)
 	if success {
 		t.Fatalf("requestVote expected to fail")
 	}
@@ -153,13 +155,27 @@ func TestCandidateRequestVote(t *testing.T) {
 
 	// Server should grant its vote to the remote server and switch to follower
 	remoteServerTerm = testCandidateStartingTerm + 2
-	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID, s)
+	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
+		initialTerm, invalidServerID, s)
 	if !success {
 		t.Fatalf("requestVote expected to succeed")
 	}
 
 	// Validate changes to server state
 	validateServerState(s, follower, remoteServerTerm, remoteServerID,
+		invalidServerID, t)
+
+	// Server should not grant its vote because remote log is not up to date
+	s.role = candidate
+	remoteServerTerm = remoteServerTerm + 1
+	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
+		invalidTermID, invalidServerID, s)
+	if success {
+		t.Fatalf("requestVote expected to fail")
+	}
+
+	// Validate changes to server state
+	validateServerState(s, follower, remoteServerTerm, invalidServerID,
 		invalidServerID, t)
 }
 

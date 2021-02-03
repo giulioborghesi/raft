@@ -27,7 +27,7 @@ func (h *RaftRPCHandler) RequestVote(ctx context.Context,
 	request *service.RequestVoteRequest) (*service.RequestVoteReply, error) {
 	// Forward call arguments to RaftService
 	localServerTerm, success := h.raftService.RequestVote(request.ServerTerm,
-		request.ServerID)
+		request.ServerID, request.LastEntryTerm, request.LastEntryIndex)
 
 	// Prepare reply and return
 	return &service.RequestVoteReply{Success: success,

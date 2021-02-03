@@ -21,7 +21,7 @@ type AbstractRaftClient interface {
 
 	// RequestVote sends a RequestVote RPC call to a remote server. The request
 	// occurs within a context that must be supplied by the caller
-	RequestVote(context.Context, int64, int64) (int64, bool, error)
+	RequestVote(context.Context, int64, int64, int64, int64) (int64, bool, error)
 }
 
 // MakeRaftClient creates a new Raft client given a RPC connection and the
@@ -63,10 +63,12 @@ func (c *raftClient) AppendEntry(entries []*service.LogEntry,
 }
 
 func (c *raftClient) RequestVote(ctx context.Context, serverTerm int64,
-	serverID int64) (int64, bool, error) {
+	serverID int64, lastEntryTerm int64, lastEntryIndex int64) (int64,
+	bool, error) {
 	// Create RPC request and send request to remote server
 	request := &service.RequestVoteRequest{ServerTerm: serverTerm,
-		ServerID: serverID}
+		ServerID: serverID, LastEntryTerm: lastEntryTerm,
+		LastEntryIndex: lastEntryIndex}
 	reply, err := c.client.RequestVote(ctx, request)
 
 	// Prepare results and return them to caller
