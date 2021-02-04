@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,15 +17,22 @@ const (
 // encodeEntry creates a unique key for a newly inserted log entry by combining
 // the log term with the log index
 func encodeEntry(entryTerm int64, entryIndex int64) string {
-	return fmt.Sprintf("%d#%d", entryTerm, entryIndex)
+	key := fmt.Sprintf("%d#%d", entryTerm, entryIndex)
+	return base64.StdEncoding.EncodeToString([]byte(key))
 }
 
 // decodeEntry decodes a log entry unique key and returns the corresponding log
 // term and log entry index
-func decodeEntry(key string) (int64, int64) {
-	idx := strings.LastIndex(key, "#")
+func decodeEntry(encodedKey string) (int64, int64) {
+	// Decode key
+	b, err := base64.StdEncoding.DecodeString(encodedKey)
+	if err != nil {
+		panic(err)
+	}
+	key := string(b)
 
 	// Extract entry term
+	idx := strings.LastIndex(key, "#")
 	entryTerm, err := strconv.Atoi(key[:idx])
 	if err != nil {
 		panic(fmt.Errorf("decodeEntry: %v", err))
@@ -51,14 +59,15 @@ func (l *leaderRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "leader"))
 }
 
-func (l *leaderRole) appendNewEntry(entry *service.LogEntry, commitIndex int64,
+func (l *leaderRole) appendNewEntry(payload string, commitIndex int64,
 	s *serverState) (string, int64, error) {
-	// Append new entry to log
-	nextLogIndex := s.log.appendEntry(entry)
+	// Create and append new entry to log
+	entry := &service.LogEntry{EntryTerm: s.currentTerm(), Payload: payload}
+	entryIndex := s.log.appendEntry(entry)
 
 	// Replicate log entry and return unique entry key to client
-	l.sendEntries(s.currentTerm(), nextLogIndex, commitIndex, s)
-	return encodeEntry(s.currentTerm(), nextLogIndex), s.leaderID, nil
+	l.sendEntries(s.currentTerm(), entryIndex+1, commitIndex, s)
+	return encodeEntry(s.currentTerm(), entryIndex), s.leaderID, nil
 }
 
 func (l *leaderRole) entryStatus(key string, commitIndex int64,
@@ -67,9 +76,16 @@ func (l *leaderRole) entryStatus(key string, commitIndex int64,
 	logNextIndex := s.log.nextIndex()
 	entryTerm, entryIndex := decodeEntry(key)
 
-	// Entry must be a valid one
-	if entryTerm > s.currentTerm() || entryIndex > logNextIndex {
-		return invalid, s.leaderID, fmt.Errorf("entry is not valid")
+	// Entry may have been appended by new leader, status unknown
+	currentTerm := s.currentTerm()
+	if entryTerm > currentTerm {
+		return unknown, s.leaderID, nil
+	}
+
+	// Entry term is at most local term. If index exceeds local index, entry
+	// is invalid as it cannot have been appended yet
+	if entryIndex >= logNextIndex {
+		return invalid, s.leaderID, nil
 	}
 
 	// Entry is lost if a term mismatch is detected

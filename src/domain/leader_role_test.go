@@ -30,6 +30,26 @@ func MakeLeaderServerState() *serverState {
 	s.serverID = s.leaderID
 	return s
 }
+
+func TestEncodeDecodeKey(t *testing.T) {
+	var entryTerm int64 = 6
+	var entryIndex int64 = 15
+
+	// Encode and decode log entry info
+	s := encodeEntry(entryTerm, entryIndex)
+	actualEntryTerm, actualEntryIndex := decodeEntry(s)
+
+	if actualEntryTerm != entryTerm {
+		t.Fatalf("invalid entry term: expected: %d, actual: %d",
+			entryTerm, actualEntryTerm)
+	}
+
+	if actualEntryIndex != entryIndex {
+		t.Fatalf("invalid entry index: expected: %d, actual: %d",
+			entryTerm, actualEntryIndex)
+	}
+}
+
 func TestLeaderMethodsThatPanic(t *testing.T) {
 	// Initialize server state and leader
 	l := new(leaderRole)

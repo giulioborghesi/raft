@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ type AbstractRaftService interface {
 
 	// ApplyCommandAsync applies a command to the state machine asynchronously.
 	// It is invoked by an external client of the Raft service
-	ApplyCommandAsync(*service.LogEntry) (string, int64, error)
+	ApplyCommandAsync(string) (string, int64, error)
 
 	// CommandStatus checks the status of a command that was previously sent to
 	// the replicated state machine. It is invoked by an external client of the
@@ -76,14 +77,14 @@ func (s *raftService) AppendEntry(entries []*service.LogEntry,
 		serverID, prevLogTerm, prevLogIndex, commitIndex, s.state)
 }
 
-func (s *raftService) ApplyCommandAsync(entry *service.LogEntry) (string,
+func (s *raftService) ApplyCommandAsync(payload string) (string,
 	int64, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	// Try appending entry to log and return
 	commitIndex := s.state.targetCommitIndex
-	return s.roles[s.state.role].appendNewEntry(entry, commitIndex, s.state)
+	return s.roles[s.state.role].appendNewEntry(payload, commitIndex, s.state)
 }
 
 func (s *raftService) CommandStatus(key string) (logEntryStatus,
@@ -180,4 +181,54 @@ func (s *raftService) StartElection(to time.Duration) {
 		s.roles[s.state.role].sendHeartbeat(time.Duration(0), commitIndex,
 			s.state)
 	}
+}
+
+// unimplementedRaftService provides a basic implementation of a Raft service
+// that can be specialized by its user. It is useful for unit tests, where only
+// the behavior of a few methods need to be changed
+type unimplementedRaftService struct{}
+
+func (s *unimplementedRaftService) AppendEntry([]*service.LogEntry, int64,
+	int64, int64, int64, int64) (int64, bool) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "AppendEntry"))
+}
+
+func (s *unimplementedRaftService) ApplyCommandAsync(string) (string,
+	int64, error) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "ApplyCommandAsync"))
+}
+
+func (s *unimplementedRaftService) CommandStatus(string) (logEntryStatus,
+	int64, error) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "CommandStatus"))
+}
+
+func (s *unimplementedRaftService) entryInfo(int64) (int64, int64) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "entryInfo"))
+}
+
+func (s *unimplementedRaftService) entries(int64) ([]*service.LogEntry,
+	int64, int64) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "entries"))
+}
+
+func (s *unimplementedRaftService) lastModified() time.Time {
+	panic(fmt.Sprintf(notImplementedErrFmt, "lastModified"))
+}
+
+func (s *unimplementedRaftService) processAppendEntryEvent(_, _, _ int64) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "processAppendEntryEvent"))
+}
+
+func (s *unimplementedRaftService) RequestVote(int64, int64, int64,
+	int64) (int64, bool) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "RequestVote"))
+}
+
+func (s *unimplementedRaftService) sendHeartbeat(time.Duration) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "sendHeartbeat"))
+}
+
+func (s *unimplementedRaftService) StartElection(time.Duration) {
+	panic(fmt.Sprintf(notImplementedErrFmt, "StartElection"))
 }

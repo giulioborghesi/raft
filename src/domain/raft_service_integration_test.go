@@ -14,6 +14,7 @@ const (
 	testClusterSize                     = 3
 	testServiceIntegrationLeaderID      = 1
 	testServiceIntegrationOtherServerID = 2
+	testSleepDuration                   = 10 * time.Millisecond
 )
 
 func createMockRaftService(vr []abstractVoteRequestor,
@@ -313,7 +314,7 @@ func TestRaftClusterBasicElection(t *testing.T) {
 	}
 }
 
-func TestRaftClusterGenericElection(t *testing.T) {
+func TestRaftClusterGenericElectionAndAppend(t *testing.T) {
 	// Initialize logs
 	logs := make([][]*service.LogEntry, 3)
 	logs[0] = []*service.LogEntry{{EntryTerm: 1}, {EntryTerm: 1},
@@ -328,7 +329,7 @@ func TestRaftClusterGenericElection(t *testing.T) {
 
 	// Create Raft cluster
 	services, _ := createMockRaftCluster(logs)
-	time.Sleep(time.Millisecond)
+	time.Sleep(testSleepDuration)
 
 	// Initialize server state
 	services[0].state.updateTerm(1)
@@ -338,8 +339,8 @@ func TestRaftClusterGenericElection(t *testing.T) {
 	// Start a new election
 	leaderID := 2
 	services[leaderID].StartElection(time.Duration(0))
+	time.Sleep(testSleepDuration)
 
-	time.Sleep(time.Millisecond)
 	for serverID := 0; serverID < testClusterSize; serverID++ {
 		// Server with ID equal to leaderID should be the new leader
 		if serverID == leaderID {
@@ -382,6 +383,62 @@ func TestRaftClusterGenericElection(t *testing.T) {
 					expectedLog[j], entries[j].EntryTerm)
 			}
 		}
+	}
+
+	// Append an entry to the log
+	entryKey, _, _ := services[leaderID].ApplyCommandAsync(emptyString)
+	expectedLog = append(expectedLog, 6)
+	time.Sleep(testSleepDuration)
+
+	for serverID := 0; serverID < testClusterSize; serverID++ {
+		// Server with ID equal to leaderID should be the leader
+		if serverID == leaderID {
+			if services[serverID].state.role != leader {
+				t.Fatalf(fmt.Sprintf("server %d expected to become leader",
+					serverID))
+			}
+		} else {
+			if services[serverID].state.role != follower {
+				t.Fatalf(fmt.Sprintf("server %d expected to become follower",
+					serverID))
+			}
+		}
+
+		// All servers should have voted for leaderID
+		_, votedFor := services[serverID].state.votedFor()
+		if votedFor != int64(leaderID) {
+			t.Fatalf("vote casted for wrong server: "+
+				"expected: %d, actual: %d", leaderID, votedFor)
+		}
+
+		// Current term should be 6
+		currentTerm := services[serverID].state.currentTerm()
+		if currentTerm != 6 {
+			t.Fatalf("invalid term: expected %d, actual %d", 6, currentTerm)
+		}
+
+		// Log length must match the expected log length
+		entries, _, _ := services[serverID].entries(0)
+		logLength := len(entries)
+		if logLength != len(expectedLog) {
+			t.Fatalf("invalid log length: expected: %d, actual: %d",
+				len(expectedLog), logLength)
+		}
+
+		// The log entries must be identical to those of the expected log
+		for j := 0; j < logLength; j++ {
+			if entries[j].EntryTerm != expectedLog[j] {
+				t.Fatalf("invalid log entry: expected: %d, actual: %d",
+					expectedLog[j], entries[j].EntryTerm)
+			}
+		}
+	}
+
+	// Check log entry status
+	entryStatus, _, _ := services[leaderID].CommandStatus(entryKey)
+	if entryStatus != committed {
+		t.Fatalf("invalid command status: expected: %d, actual: %d",
+			entryStatus, committed)
 	}
 
 	// Teardown cluster
