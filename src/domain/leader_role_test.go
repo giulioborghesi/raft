@@ -157,7 +157,7 @@ func TestLeaderRequestVote(t *testing.T) {
 
 	// Server term less than local term, requestVote should return false
 	currentTerm, success := l.requestVote(remoteServerTerm,
-		remoteServerID, invalidTermID, invalidLogID, s)
+		remoteServerID, invalidTerm, invalidLogEntryIndex, s)
 
 	if currentTerm != initialTerm && s.currentTerm() != initialTerm {
 		t.Fatalf(fmt.Sprintf("Invalid term returned by requestVote: "+
@@ -175,7 +175,7 @@ func TestLeaderRequestVote(t *testing.T) {
 	// requestVote should change server role to follower and return true
 	remoteServerTerm = testLeaderStartingTerm + 1
 	currentTerm, success = l.requestVote(remoteServerTerm,
-		remoteServerID, initialTerm, invalidLogID, s)
+		remoteServerID, initialTerm, invalidLogEntryIndex, s)
 
 	if !success {
 		t.Fatalf("requestVote expected to return true")

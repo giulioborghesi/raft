@@ -7,17 +7,6 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
-const (
-	follower = iota
-	leader
-	candidate
-
-	initialTerm     = 0
-	invalidLogID    = -1
-	invalidServerID = -1
-	invalidTermID   = -1
-)
-
 // makeServerState creates a serverState instance
 func makeServerState(dao datasources.ServerStateDao,
 	log abstractRaftLog, serverID int64) *serverState {
@@ -26,7 +15,7 @@ func makeServerState(dao datasources.ServerStateDao,
 	s.log = log
 	s.lastModified = time.Now()
 	s.role = follower
-	s.targetCommitIndex = invalidLogID
+	s.targetCommitIndex = invalidLogEntryIndex
 	s.leaderID = invalidServerID
 	s.serverID = serverID
 	return s

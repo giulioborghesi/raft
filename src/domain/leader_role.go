@@ -132,7 +132,7 @@ func (l *leaderRole) prepareAppend(serverTerm int64, serverID int64,
 func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
 	matchIndex int64, serverID int64, s *serverState) bool {
 	// Append entry succeeded and server term did not change
-	if appendTerm == s.currentTerm() && matchIndex != invalidLogID {
+	if appendTerm == s.currentTerm() && matchIndex != invalidLogEntryIndex {
 		l.matchIndices[serverID] = matchIndex
 		s.updateTargetCommitIndex(l.matchIndices)
 		return true

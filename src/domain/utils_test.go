@@ -27,7 +27,7 @@ func (c *mockRaftClient) RequestVote(ctx context.Context, serverTerm int64,
 	serverID int64, lastEntryTerm int64, lastEntryIndex int64) (int64,
 	bool, error) {
 	if !c.requestVote {
-		return invalidTermID, false, fmt.Errorf("cannot vote")
+		return invalidTerm, false, fmt.Errorf("cannot vote")
 	}
 	currentTerm, success := c.s.RequestVote(serverTerm, serverID,
 		lastEntryTerm, lastEntryIndex)

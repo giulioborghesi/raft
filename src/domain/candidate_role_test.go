@@ -143,7 +143,7 @@ func TestCandidateRequestVote(t *testing.T) {
 
 	// Server should deny vote to remote server because it is not current
 	currentTerm, success := c.requestVote(remoteServerTerm, remoteServerID,
-		invalidTermID, invalidServerID, s)
+		invalidTerm, invalidServerID, s)
 	if success {
 		t.Fatalf("requestVote expected to fail")
 	}
@@ -169,7 +169,7 @@ func TestCandidateRequestVote(t *testing.T) {
 	s.role = candidate
 	remoteServerTerm = remoteServerTerm + 1
 	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
-		invalidTermID, invalidServerID, s)
+		invalidTerm, invalidServerID, s)
 	if success {
 		t.Fatalf("requestVote expected to fail")
 	}

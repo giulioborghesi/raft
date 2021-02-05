@@ -188,7 +188,7 @@ func TestFollowerRequestVote(t *testing.T) {
 	// Already voted, return false
 	serverTerm := initialTerm
 	currentTerm, voted := f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
+		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
 		t.Fatalf("requestVote not expected to grant a vote")
@@ -201,7 +201,7 @@ func TestFollowerRequestVote(t *testing.T) {
 	// Server did not vote yet, grant vote and return true
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		initialTerm, invalidLogID, s)
+		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
 		t.Fatalf("requestVote expected to grant a vote")
@@ -215,7 +215,7 @@ func TestFollowerRequestVote(t *testing.T) {
 	serverTerm += 1
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		initialTerm, invalidLogID, s)
+		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
 		t.Fatalf("requestVote expected to grant a vote")
@@ -229,7 +229,7 @@ func TestFollowerRequestVote(t *testing.T) {
 	serverTerm = currentTerm + 1
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
+		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
 		t.Fatalf("requestVote not expected to grant a vote")
