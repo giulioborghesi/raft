@@ -32,30 +32,6 @@ func makeCandidateServerState() *serverState {
 	return s
 }
 
-// validateServerState validates the actual server state against the expected
-// server state
-func validateServerState(s *serverState, newRole int, newTerm int64,
-	newVotedFor int64, newLeaderID int64, t *testing.T) {
-	if s.role != newRole {
-		t.Fatalf("invalid role: expected: %d, actual: %d", newRole, s.role)
-	}
-
-	term, votedFor := s.votedFor()
-	if term != newTerm {
-		t.Fatalf("invalid term: expected: %d, actual: %d", newTerm, term)
-	}
-
-	if newVotedFor != votedFor {
-		t.Fatalf("invalid voted for: expected: %d, actual: %d",
-			newVotedFor, votedFor)
-	}
-
-	if s.leaderID != newLeaderID {
-		t.Fatalf("invalid leader ID: expected: %d, actual: %d",
-			newLeaderID, s.leaderID)
-	}
-}
-
 func TestCandidateMethodsThatPanicOrAreTrivial(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)

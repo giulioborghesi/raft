@@ -49,7 +49,8 @@ func (f *followerRole) entryStatus(_ string, _ int64,
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) bool {
-	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "follower"))
+	panic(fmt.Sprintf(forbiddenMethodErrFmt, "finalizeElection",
+		roleName(follower)))
 }
 
 func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
@@ -122,5 +123,6 @@ func (f *followerRole) sendHeartbeat(time.Duration, int64, *serverState) {
 
 func (f *followerRole) startElection(
 	s *serverState) []chan requestVoteResult {
-	panic(fmt.Sprintf(roleErrCallFmt, "startElection", "follower"))
+	panic(fmt.Sprintf(forbiddenMethodErrFmt, "startElection",
+		roleName(follower)))
 }

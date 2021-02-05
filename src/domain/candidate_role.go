@@ -15,17 +15,20 @@ type candidateRole struct {
 
 func (c *candidateRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
-	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "candidate"))
+	panic(fmt.Sprintf(forbiddenMethodErrFmt, "appendEntry",
+		roleName(candidate)))
 }
 
 func (c *candidateRole) appendNewEntry(_ string, _ int64,
 	s *serverState) (string, int64, error) {
-	return emptyString, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
+	return emptyString, s.leaderID, fmt.Errorf(wrongRoleErrFmt,
+		roleName(candidate))
 }
 
 func (c *candidateRole) entryStatus(_ string, _ int64,
 	s *serverState) (logEntryStatus, int64, error) {
-	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
+	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt,
+		roleName(candidate))
 }
 
 func (c *candidateRole) finalizeElection(electionTerm int64,
