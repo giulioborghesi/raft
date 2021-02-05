@@ -37,9 +37,9 @@ func (f *followerRole) appendEntry(entries []*service.LogEntry, serverTerm,
 	return currentTerm, success
 }
 
-func (f *followerRole) appendNewEntry(_ *service.LogEntry, _ int64,
+func (f *followerRole) appendNewEntry(_ string, _ int64,
 	s *serverState) (string, int64, error) {
-	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+	return emptyString, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
 }
 
 func (f *followerRole) entryStatus(_ string, _ int64,

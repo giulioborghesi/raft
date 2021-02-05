@@ -18,9 +18,9 @@ func (c *candidateRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "candidate"))
 }
 
-func (c *candidateRole) appendNewEntry(_ *service.LogEntry, _ int64,
+func (c *candidateRole) appendNewEntry(_ string, _ int64,
 	s *serverState) (string, int64, error) {
-	return "", s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
+	return emptyString, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "candidate")
 }
 
 func (c *candidateRole) entryStatus(_ string, _ int64,

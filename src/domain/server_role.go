@@ -22,7 +22,7 @@ type serverRole interface {
 		*serverState) (int64, bool)
 
 	// appendNewEntry appends a new log entry sent by a client to the log
-	appendNewEntry(*service.LogEntry, int64, *serverState) (string, int64, error)
+	appendNewEntry(string, int64, *serverState) (string, int64, error)
 
 	// entryStatus returns the status of a log entry given its key
 	entryStatus(string, int64, *serverState) (logEntryStatus, int64, error)

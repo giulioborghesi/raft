@@ -12,6 +12,7 @@ const (
 	appended
 	lost
 	invalid
+	unknown
 )
 
 // isRemoteLogCurrent returns true if the remote log is up-to-date,
@@ -61,7 +62,7 @@ func (l *raftLog) appendEntry(entry *service.LogEntry) int64 {
 	if entry != nil {
 		l.e = append(l.e, entry)
 	}
-	return int64(len(l.e))
+	return int64(len(l.e)) - 1
 }
 
 func (l *raftLog) appendEntries(entries []*service.LogEntry,
@@ -78,10 +79,10 @@ func (l *raftLog) appendEntries(entries []*service.LogEntry,
 		return false
 	}
 
-	// Remove obsolete entries and append new ones
+	// Log entry found: remove obsolete entries and append new ones
 	l.e = l.e[:prevEntryIndex+1]
 	l.e = append(l.e, entries...)
-	return false
+	return true
 }
 
 func (l *raftLog) entryTerm(idx int64) int64 {
