@@ -5,8 +5,37 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/service"
 )
+
+// makeTestServerState creates an instance of serverState to be used for
+// testing purposes
+func makeTestServerState(currentTerm int64, votedFor int64, serverID int64,
+	leaderID int64, role int, active bool) *serverState {
+	// Create dao and log
+	dao := datasources.MakeTestServerStateDao(currentTerm, votedFor)
+	log := &mockRaftLog{value: active}
+
+	s := makeServerState(dao, log, serverID)
+	s.leaderID = leaderID
+	s.role = role
+	return s
+}
+
+// roleName returns a human-readable string describing the server role
+func roleName(role int) string {
+	switch role {
+	case candidate:
+		return "candidate"
+	case follower:
+		return "follower"
+	case leader:
+		return "leader"
+	default:
+		panic("unknown role")
+	}
+}
 
 // validateServerState validates the state of the server state against its
 // expected state
@@ -27,20 +56,6 @@ func validateServerState(s *serverState, expectedRole int, expectedTerm int64,
 
 	if s.leaderID != expectedLeaderID {
 		t.Fatalf(invalidServerErrFmt, "leader", expectedLeaderID, s.leaderID)
-	}
-}
-
-// roleName returns a human-readable string describing the server role
-func roleName(role int) string {
-	switch role {
-	case candidate:
-		return "candidate"
-	case follower:
-		return "follower"
-	case leader:
-		return "leader"
-	default:
-		panic("unknown role")
 	}
 }
 

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/giulioborghesi/raft-implementation/src/service"
@@ -28,7 +29,7 @@ func (c *mockRaftClientEntryReplicator) AppendEntry(
 
 func (c *mockRaftClientEntryReplicator) RequestVote(ctx context.Context,
 	serverTerm int64, serverID int64, _, _ int64) (int64, bool, error) {
-	panic("method not implemented")
+	panic(fmt.Sprintf(notImplementedErrFmt, "RequestVote"))
 }
 
 // mockRaftServiceEntryAppender implements a Raft service to be used for unit

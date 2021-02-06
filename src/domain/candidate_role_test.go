@@ -5,37 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
-	testCandidateStartingTerm = 15
-	testCandidateVotedFor     = 1
-	testCandidateRemoteID     = 4
-	testCandidateServerID     = 2
+	testCandidateActive   = false
+	testCandidateVotedFor = 1
+	testCandidateRemoteID = 4
+	testCandidateServerID = 2
 )
-
-// makeCandidateServerState creates and initializes an instance of serverState
-// for a server in candidate mode
-func makeCandidateServerState() *serverState {
-	dao := datasources.MakeTestServerStateDao()
-	dao.UpdateTerm(testCandidateStartingTerm)
-	dao.UpdateVotedFor(testCandidateVotedFor)
-
-	s := new(serverState)
-	s.dao = dao
-	s.leaderID = invalidServerID
-	s.log = &mockRaftLog{}
-	s.role = candidate
-	s.serverID = testCandidateServerID
-	return s
-}
 
 func TestCandidateMethodsThatPanicOrAreTrivial(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)
-	s := new(serverState)
+	s := makeTestServerState(testStartingTerm, testCandidateVotedFor,
+		testCandidateServerID, invalidServerID, candidate, testCandidateActive)
 
 	// Test trivial methods
 	c.sendHeartbeat(time.Second, 0, s)
@@ -53,10 +37,11 @@ func TestCandidateMethodsThatPanicOrAreTrivial(t *testing.T) {
 func TestCandidateMakeCandidate(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)
-	s := makeCandidateServerState()
+	s := makeTestServerState(testStartingTerm, testCandidateVotedFor,
+		testCandidateServerID, invalidServerID, candidate, testCandidateActive)
 
 	// Store initial term
-	initialTerm := int64(testCandidateStartingTerm)
+	initialTerm := int64(testStartingTerm)
 
 	// makeCandidate will increase term and vote for itself
 	success := c.makeCandidate(time.Millisecond, s)
@@ -73,10 +58,11 @@ func TestCandidateMakeCandidate(t *testing.T) {
 func TestCandidatePrepareAppend(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)
-	s := makeCandidateServerState()
+	s := makeTestServerState(testStartingTerm, testCandidateVotedFor,
+		testCandidateServerID, invalidServerID, candidate, testCandidateActive)
 
 	// Prepare test data
-	var remoteServerTerm int64 = testCandidateStartingTerm - 3
+	var remoteServerTerm int64 = testStartingTerm - 3
 	var remoteServerID int64 = testCandidateServerID + 1
 
 	// Remote server term less than local term, fail
@@ -86,7 +72,7 @@ func TestCandidatePrepareAppend(t *testing.T) {
 	}
 
 	// Remote server equal to local term, succeed and do not change voted for
-	remoteServerTerm = testCandidateStartingTerm
+	remoteServerTerm = testStartingTerm
 	if success := c.prepareAppend(remoteServerTerm,
 		remoteServerID, s); !success {
 		t.Fatalf("prepareAppend expected to succeed")
@@ -97,7 +83,7 @@ func TestCandidatePrepareAppend(t *testing.T) {
 		remoteServerID, t)
 
 	// Remote server term greater than local term, succeed
-	remoteServerTerm = testCandidateStartingTerm + 1
+	remoteServerTerm = testStartingTerm + 1
 	if success := c.prepareAppend(remoteServerTerm,
 		remoteServerID, s); !success {
 		t.Fatalf("prepareAppend expected to succeed")
@@ -111,10 +97,11 @@ func TestCandidatePrepareAppend(t *testing.T) {
 func TestCandidateRequestVote(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)
-	s := makeCandidateServerState()
+	s := makeTestServerState(testStartingTerm, testCandidateVotedFor,
+		testCandidateServerID, invalidServerID, candidate, testCandidateActive)
 
 	// Prepare test data
-	var remoteServerTerm int64 = testCandidateStartingTerm - 3
+	var remoteServerTerm int64 = testStartingTerm - 3
 	var remoteServerID int64 = testCandidateServerID + 1
 
 	// Server should deny vote to remote server because it is not current
@@ -124,13 +111,13 @@ func TestCandidateRequestVote(t *testing.T) {
 		t.Fatalf("requestVote expected to fail")
 	}
 
-	if currentTerm != testCandidateStartingTerm {
+	if currentTerm != testStartingTerm {
 		t.Fatalf(fmt.Sprintf("unexpected server term: "+
-			"expected: %d, actual: %d", testCandidateStartingTerm, currentTerm))
+			"expected: %d, actual: %d", testStartingTerm, currentTerm))
 	}
 
 	// Server should grant its vote to the remote server and switch to follower
-	remoteServerTerm = testCandidateStartingTerm + 2
+	remoteServerTerm = testStartingTerm + 2
 	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
 		initialTerm, invalidServerID, s)
 	if !success {
@@ -158,10 +145,11 @@ func TestCandidateRequestVote(t *testing.T) {
 func TestCandidateFinalizeElection(t *testing.T) {
 	// Initialize server state and candidate
 	c := new(candidateRole)
-	s := makeCandidateServerState()
+	s := makeTestServerState(testStartingTerm, testCandidateVotedFor,
+		testCandidateServerID, invalidServerID, candidate, testCandidateActive)
 
 	// Prepare test data
-	var electionTerm int64 = testCandidateStartingTerm - 1
+	var electionTerm int64 = testStartingTerm - 1
 
 	// Election results
 	results := []requestVoteResult{{success: true,

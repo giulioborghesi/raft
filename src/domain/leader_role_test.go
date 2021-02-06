@@ -5,31 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
-	testLeaderStartingTerm = 15
-	testLeaderLeaderID     = 2
-	testLeaderRemoteID     = 4
+	testLeaderActive   = false
+	testLeaderLeaderID = 2
+	testLeaderServerID = testLeaderLeaderID
+	testLeaderRemoteID = 4
+	testLeaderVotedFor = testLeaderLeaderID
 )
-
-// MakeLeaderServerState creates and initializes an instance of serverState
-// for a server in leader mode
-func MakeLeaderServerState() *serverState {
-	dao := datasources.MakeTestServerStateDao()
-	dao.UpdateTerm(testLeaderStartingTerm)
-	dao.UpdateVotedFor(testLeaderLeaderID)
-
-	s := new(serverState)
-	s.dao = dao
-	s.leaderID = testLeaderLeaderID
-	s.log = &mockRaftLog{}
-	s.role = leader
-	s.serverID = s.leaderID
-	return s
-}
 
 func TestEncodeDecodeKey(t *testing.T) {
 	var entryTerm int64 = 6
@@ -53,7 +38,8 @@ func TestEncodeDecodeKey(t *testing.T) {
 func TestLeaderMethodsThatPanic(t *testing.T) {
 	// Initialize server state and leader
 	l := new(leaderRole)
-	s := new(serverState)
+	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
+		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
 	// Test appendEntry
 	appendEntry := func() {
@@ -77,7 +63,8 @@ func TestLeaderMethodsThatPanic(t *testing.T) {
 func TestLeaderMakeCandidate(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
-	s := MakeLeaderServerState()
+	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
+		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
 	// makeCandidate always returns false
 	success := l.makeCandidate(time.Millisecond, s)
@@ -89,7 +76,8 @@ func TestLeaderMakeCandidate(t *testing.T) {
 func TestLeaderPrepareAppend(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
-	s := MakeLeaderServerState()
+	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
+		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
 	// Store initial term
 	initialTerm := s.currentTerm()
@@ -110,7 +98,7 @@ func TestLeaderPrepareAppend(t *testing.T) {
 	}
 
 	// prepareAppend should change server role to follower and return true
-	remoteServerTerm = testLeaderStartingTerm + 1
+	remoteServerTerm = testStartingTerm + 1
 	success = l.prepareAppend(remoteServerTerm, remoteServerID, s)
 
 	if s.currentTerm() == initialTerm {
@@ -146,7 +134,8 @@ func TestLeaderPrepareAppend(t *testing.T) {
 func TestLeaderRequestVote(t *testing.T) {
 	// Create server state and leader instance
 	l := new(leaderRole)
-	s := MakeLeaderServerState()
+	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
+		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
 	// Store initial term
 	initialTerm := s.currentTerm()
@@ -173,7 +162,7 @@ func TestLeaderRequestVote(t *testing.T) {
 		testLeaderLeaderID, t)
 
 	// requestVote should change server role to follower and return true
-	remoteServerTerm = testLeaderStartingTerm + 1
+	remoteServerTerm = testStartingTerm + 1
 	currentTerm, success = l.requestVote(remoteServerTerm,
 		remoteServerID, initialTerm, invalidLogEntryIndex, s)
 

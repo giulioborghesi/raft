@@ -20,7 +20,7 @@ const (
 func createMockRaftService(vr []abstractVoteRequestor,
 	er []abstractEntryReplicator) *raftService {
 	// Create a server state instance
-	dao := datasources.MakeTestServerStateDao()
+	dao := datasources.MakeTestServerStateDao(0, -1)
 	log := &mockRaftLog{value: true}
 	s := makeServerState(dao, log, testServiceIntegrationLeaderID)
 
@@ -38,7 +38,7 @@ func createMockRaftCluster(logs [][]*service.LogEntry) ([]*raftService,
 	services := make([]*raftService, 0, testClusterSize)
 	for i := 0; i < testClusterSize; i++ {
 		// Create a server state instance
-		dao := datasources.MakeTestServerStateDao()
+		dao := datasources.MakeTestServerStateDao(0, -1)
 		log := &raftLog{e: logs[i]}
 		s := makeServerState(dao, log, int64(i))
 

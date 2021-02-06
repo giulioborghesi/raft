@@ -7,5 +7,6 @@ const (
 	invalidServerErrFmt = "invalid %s ID: expected: %d, actual: %d"
 
 	// Fatal errors
-	forbiddenMethodErrFmt = "method %s cannot be called on %s"
+	forbiddenMethodErrFmt = "calling method %s on %s is forbidden"
+	notImplementedErrFmt  = "method %s not implemented"
 )

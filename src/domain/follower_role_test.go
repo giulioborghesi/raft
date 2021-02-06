@@ -5,35 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
-	testFollowerStartingTerm = 15
-	testFollowerVotedFor     = 1
-	testFollowerLeaderID     = 2
-	testFollowerRemoteID     = 4
+	testFollowerActive   = true
+	testFollowerLeaderID = 2
+	testFollowerRemoteID = 4
+	testFollowerServerID = 3
+	testFollowerVotedFor = 1
 )
-
-// MakeFollowerServerState creates and initializes an instance of serverState
-// for a server in follower mode
-func MakeFollowerServerState() *serverState {
-	dao := datasources.MakeTestServerStateDao()
-	dao.UpdateTerm(testFollowerStartingTerm)
-	dao.UpdateVotedFor(testFollowerVotedFor)
-
-	s := new(serverState)
-	s.dao = dao
-	s.log = &mockRaftLog{value: true}
-	s.leaderID = testFollowerLeaderID
-	return s
-}
 
 func TestFollowerMethodsThatPanic(t *testing.T) {
 	// Initialize server state and follower
 	f := new(followerRole)
-	s := new(serverState)
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Test finalizeElection
 	finalizeElection := func() {
@@ -51,7 +38,8 @@ func TestFollowerMethodsThatPanic(t *testing.T) {
 func TestFollowerAppendEntry(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Call to appendEntry should succeed
 	serverTerm := s.currentTerm()
@@ -81,7 +69,8 @@ func TestFollowerAppendEntry(t *testing.T) {
 func TestFollowerMakeCandidate(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Store initial term for later comparison
 	initialTerm := s.currentTerm()
@@ -122,7 +111,8 @@ func TestFollowerMakeCandidate(t *testing.T) {
 func TestFollowerPrepareAppend(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Call to prepareAppend expected to succeed
 	serverTerm := s.currentTerm()
@@ -131,7 +121,7 @@ func TestFollowerPrepareAppend(t *testing.T) {
 		t.Fatalf("prepareAppend expected to succeed")
 	}
 
-	if s.currentTerm() != testFollowerStartingTerm {
+	if s.currentTerm() != testStartingTerm {
 		t.Fatalf("prepareAppend should not change the current term")
 	}
 
@@ -142,7 +132,7 @@ func TestFollowerPrepareAppend(t *testing.T) {
 		t.Fatalf("prepareAppend expected to fail")
 	}
 
-	if s.currentTerm() != testFollowerStartingTerm {
+	if s.currentTerm() != testStartingTerm {
 		t.Fatalf("prepareAppend should not change the current term")
 	}
 
@@ -167,7 +157,8 @@ func TestFollowerPrepareAppend(t *testing.T) {
 func TestFollowerProcessAppendEntryEvent(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// processAppendEntryEvent should always return false
 	ok := f.processAppendEntryEvent(0, 0, 0, s)
@@ -180,7 +171,8 @@ func TestFollowerProcessAppendEntryEvent(t *testing.T) {
 func TestFollowerRequestVote(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Store initial term for further comparison
 	initialTerm := s.currentTerm()
