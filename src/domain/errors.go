@@ -7,6 +7,12 @@ const (
 	invalidServerErrFmt = "invalid %s ID: expected: %d, actual: %d"
 
 	// Fatal errors
-	forbiddenMethodErrFmt = "calling method %s on %s is forbidden"
+	notAvailableErrFmt    = "method %s not available on %s"
 	notImplementedErrFmt  = "method %s not implemented"
+	termInconsistencyErr  = "remote server term less than local term"
+	multipleLeadersErrFmt = "multiple leaders detected during term %d"
+
+	// Unit test errors
+	methodExpectedToFailErrFmt    = "method %s expected to fail"
+	methodExpectedToSucceedErrFmt = "method %s expected to succeed"
 )

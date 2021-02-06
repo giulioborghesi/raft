@@ -12,6 +12,17 @@ const (
 	followerErrTermFmt = "invalid term number: expected: %d, actual: %d"
 )
 
+// checkLeader checks whether the leader ID is acceptable or not. The leader ID
+// is acceptable if it is unknown or equal to the ID of the server that sent
+// the append entry RPC
+func checkLeader(currentTerm int64, serverTerm int64, leaderID int64,
+	actualLeaderID int64) bool {
+	if currentTerm == serverTerm && leaderID != invalidServerID {
+		return leaderID == actualLeaderID
+	}
+	return true
+}
+
 // followerRole implements the serverRole interface for a follower server
 type followerRole struct{}
 
@@ -39,17 +50,19 @@ func (f *followerRole) appendEntry(entries []*service.LogEntry, serverTerm,
 
 func (f *followerRole) appendNewEntry(_ string, _ int64,
 	s *serverState) (string, int64, error) {
-	return emptyString, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+	return emptyString, s.leaderID,
+		fmt.Errorf(notAvailableErrFmt, "appendNewEntry", roleName(follower))
 }
 
 func (f *followerRole) entryStatus(_ string, _ int64,
 	s *serverState) (logEntryStatus, int64, error) {
-	return invalid, s.leaderID, fmt.Errorf(wrongRoleErrFmt, "follower")
+	return invalid, s.leaderID,
+		fmt.Errorf(notAvailableErrFmt, "entryStatus", roleName(follower))
 }
 
 func (f *followerRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) bool {
-	panic(fmt.Sprintf(forbiddenMethodErrFmt, "finalizeElection",
+	panic(fmt.Sprintf(notAvailableErrFmt, "finalizeElection",
 		roleName(follower)))
 }
 
@@ -69,13 +82,18 @@ func (f *followerRole) makeCandidate(to time.Duration, s *serverState) bool {
 func (f *followerRole) prepareAppend(serverTerm int64, serverID int64,
 	s *serverState) bool {
 	// Get current term
-	currentTerm := s.currentTerm()
+	currentTerm, votedFor := s.votedFor()
 	if currentTerm > serverTerm {
 		return false
 	}
 
+	// If term has not changed, leader ID must be equal to remote server ID or
+	// be unknown: if not, multiple leaders exist in the same term
+	if ok := checkLeader(currentTerm, serverTerm, s.leaderID, serverID); !ok {
+		panic(fmt.Sprintf(multipleLeadersErrFmt, currentTerm))
+	}
+
 	// If term changed, set votedFor to invalid server ID
-	_, votedFor := s.votedFor()
 	if currentTerm < serverTerm {
 		votedFor = invalidServerID
 	}
@@ -123,6 +141,6 @@ func (f *followerRole) sendHeartbeat(time.Duration, int64, *serverState) {
 
 func (f *followerRole) startElection(
 	s *serverState) []chan requestVoteResult {
-	panic(fmt.Sprintf(forbiddenMethodErrFmt, "startElection",
+	panic(fmt.Sprintf(notAvailableErrFmt, "startElection",
 		roleName(follower)))
 }

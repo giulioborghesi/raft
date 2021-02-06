@@ -50,7 +50,7 @@ func TestFollowerAppendEntry(t *testing.T) {
 	}
 
 	if !ok {
-		t.Errorf("appendEntry was not expected to fail")
+		t.Errorf(methodExpectedToSucceedErrFmt, "appendEntry")
 	}
 
 	// Server term different from local value, appendEntry should panic
@@ -75,37 +75,28 @@ func TestFollowerMakeCandidate(t *testing.T) {
 	// Store initial term for later comparison
 	initialTerm := s.currentTerm()
 
-	// Initialize time and duration
+	// Time elapsed since last modification does not exceed timeout, fail
 	s.lastModified = time.Now()
-	to := time.Second
+	to := time.Minute
 	success := f.makeCandidate(to, s)
 
-	// Apart from patological cases during test execution, this should fail
 	if success {
-		t.Fatalf("makeCandidate was expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "makeCandidate")
 	}
 
-	if s.currentTerm() != initialTerm {
-		t.Fatalf("makeCandidate should not change the current term")
-	}
+	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
+		testFollowerLeaderID, t)
 
-	if s.role != follower {
-		t.Fatalf(fmt.Sprintf("invalid server role following makeCandidate: "+
-			"expected: %d, actual: %d", follower, s.role))
-	}
-
-	// Ensure time elapsed exceeds timeout
+	// Time elapsed since last modification exceeds timeout, succeed
 	s.lastModified = time.Now().Add(-to)
 	success = f.makeCandidate(to, s)
 
 	if !success {
-		t.Fatalf("makeCandidate was expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "makeCandidate")
 	}
 
-	if s.role != candidate {
-		t.Fatalf(fmt.Sprintf("invalid server role following makeCandidate: "+
-			"expected: %d, actual: %d", candidate, s.role))
-	}
+	validateServerState(s, candidate, initialTerm+1, testFollowerServerID,
+		invalidServerID, t)
 }
 
 func TestFollowerPrepareAppend(t *testing.T) {
@@ -115,21 +106,21 @@ func TestFollowerPrepareAppend(t *testing.T) {
 		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Call to prepareAppend expected to succeed
-	serverTerm := s.currentTerm()
-	ok := f.prepareAppend(serverTerm, s.leaderID, s)
+	initialTerm := s.currentTerm()
+	serverTerm := initialTerm
+	ok := f.prepareAppend(serverTerm, testFollowerLeaderID, s)
 	if !ok {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
-	if s.currentTerm() != testStartingTerm {
-		t.Fatalf("prepareAppend should not change the current term")
-	}
+	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
+		testFollowerLeaderID, t)
 
 	// Server term less than local term, prepareAppend expected to fail
-	serverTerm = s.currentTerm() - 1
+	serverTerm = initialTerm - 1
 	ok = f.prepareAppend(serverTerm, testFollowerRemoteID, s)
 	if ok {
-		t.Fatalf("prepareAppend expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "prepareAppend")
 	}
 
 	if s.currentTerm() != testStartingTerm {
@@ -141,7 +132,7 @@ func TestFollowerPrepareAppend(t *testing.T) {
 	serverTerm = s.currentTerm() + 1
 	ok = f.prepareAppend(serverTerm, testFollowerRemoteID, s)
 	if !ok {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
 	if s.currentTerm() != serverTerm {
@@ -160,10 +151,10 @@ func TestFollowerProcessAppendEntryEvent(t *testing.T) {
 	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
 		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
-	// processAppendEntryEvent should always return false
+	// processAppendEntryEvent should fail under all circumstances
 	ok := f.processAppendEntryEvent(0, 0, 0, s)
 	if ok {
-		t.Fatalf("processAppendEntryEvent expected to return false")
+		t.Fatalf(methodExpectedToFailErrFmt, "processAppendEntryEvent")
 	}
 
 }
@@ -183,10 +174,9 @@ func TestFollowerRequestVote(t *testing.T) {
 		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
-		t.Fatalf("requestVote not expected to grant a vote")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
 		testFollowerLeaderID, t)
 
@@ -196,10 +186,9 @@ func TestFollowerRequestVote(t *testing.T) {
 		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
-		t.Fatalf("requestVote expected to grant a vote")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
 		testFollowerLeaderID, t)
 
@@ -210,10 +199,9 @@ func TestFollowerRequestVote(t *testing.T) {
 		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
-		t.Fatalf("requestVote expected to grant a vote")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
 		invalidServerID, t)
 
@@ -224,10 +212,9 @@ func TestFollowerRequestVote(t *testing.T) {
 		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
-		t.Fatalf("requestVote not expected to grant a vote")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, invalidServerID,
 		invalidServerID, t)
 }

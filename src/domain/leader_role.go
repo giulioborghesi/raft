@@ -56,7 +56,7 @@ type leaderRole struct {
 
 func (l *leaderRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
-	panic(fmt.Sprintf(forbiddenMethodErrFmt, "appendEntry", roleName(leader)))
+	panic(fmt.Sprintf(notAvailableErrFmt, "appendEntry", roleName(leader)))
 }
 
 func (l *leaderRole) appendNewEntry(payload string, commitIndex int64,
@@ -103,7 +103,7 @@ func (l *leaderRole) entryStatus(key string, commitIndex int64,
 
 func (l *leaderRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) bool {
-	panic(fmt.Sprintf(forbiddenMethodErrFmt, "finalizeElection",
+	panic(fmt.Sprintf(notAvailableErrFmt, "finalizeElection",
 		roleName(leader)))
 }
 
@@ -185,6 +185,6 @@ func (l *leaderRole) sendHeartbeat(to time.Duration, commitIndex int64,
 
 func (l *leaderRole) startElection(
 	s *serverState) []chan requestVoteResult {
-	panic(fmt.Sprintf(forbiddenMethodErrFmt, "startElection",
+	panic(fmt.Sprintf(notAvailableErrFmt, "startElection",
 		roleName(leader)))
 }

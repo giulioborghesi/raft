@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -12,7 +11,7 @@ const (
 	testCandidateActive   = false
 	testCandidateVotedFor = 1
 	testCandidateRemoteID = 4
-	testCandidateServerID = 2
+	testCandidateServerID = testCandidateVotedFor
 )
 
 func TestCandidateMethodsThatPanicOrAreTrivial(t *testing.T) {
@@ -23,11 +22,12 @@ func TestCandidateMethodsThatPanicOrAreTrivial(t *testing.T) {
 
 	// Test trivial methods
 	c.sendHeartbeat(time.Second, 0, s)
+
 	if ok := c.processAppendEntryEvent(0, 0, 0, s); ok {
-		t.Fatalf("processAppendEntry expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "processAppendEntryEvent")
 	}
 
-	// Test finalizeElection
+	// Test methods that panic
 	appendEntry := func() {
 		c.appendEntry(nil, 0, 0, 0, 0, 0, s)
 	}
@@ -47,10 +47,9 @@ func TestCandidateMakeCandidate(t *testing.T) {
 	success := c.makeCandidate(time.Millisecond, s)
 
 	if !success {
-		t.Fatalf("makeCandidate expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "makeCandidate")
 	}
 
-	// Validate changes to server state
 	validateServerState(s, candidate, initialTerm+1, testCandidateServerID,
 		invalidServerID, t)
 }
@@ -68,17 +67,19 @@ func TestCandidatePrepareAppend(t *testing.T) {
 	// Remote server term less than local term, fail
 	if success := c.prepareAppend(remoteServerTerm,
 		remoteServerID, s); success {
-		t.Fatalf("prepareAppend expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "prepareAppend")
 	}
+
+	validateServerState(s, candidate, testStartingTerm, testCandidateServerID,
+		invalidServerID, t)
 
 	// Remote server equal to local term, succeed and do not change voted for
 	remoteServerTerm = testStartingTerm
 	if success := c.prepareAppend(remoteServerTerm,
 		remoteServerID, s); !success {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
-	// Validate changes to server state
 	validateServerState(s, follower, remoteServerTerm, testCandidateServerID,
 		remoteServerID, t)
 
@@ -86,10 +87,9 @@ func TestCandidatePrepareAppend(t *testing.T) {
 	remoteServerTerm = testStartingTerm + 1
 	if success := c.prepareAppend(remoteServerTerm,
 		remoteServerID, s); !success {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
-	// Validate changes to server state
 	validateServerState(s, follower, remoteServerTerm, invalidServerID,
 		remoteServerID, t)
 }
@@ -105,39 +105,38 @@ func TestCandidateRequestVote(t *testing.T) {
 	var remoteServerID int64 = testCandidateServerID + 1
 
 	// Server should deny vote to remote server because it is not current
-	currentTerm, success := c.requestVote(remoteServerTerm, remoteServerID,
+	_, success := c.requestVote(remoteServerTerm, remoteServerID,
 		invalidTerm, invalidServerID, s)
+
 	if success {
-		t.Fatalf("requestVote expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	if currentTerm != testStartingTerm {
-		t.Fatalf(fmt.Sprintf("unexpected server term: "+
-			"expected: %d, actual: %d", testStartingTerm, currentTerm))
-	}
+	validateServerState(s, candidate, testStartingTerm, testCandidateVotedFor,
+		invalidServerID, t)
 
 	// Server should grant its vote to the remote server and switch to follower
 	remoteServerTerm = testStartingTerm + 2
-	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
+	_, success = c.requestVote(remoteServerTerm, remoteServerID,
 		initialTerm, invalidServerID, s)
+
 	if !success {
-		t.Fatalf("requestVote expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	// Validate changes to server state
 	validateServerState(s, follower, remoteServerTerm, remoteServerID,
 		invalidServerID, t)
 
 	// Server should not grant its vote because remote log is not up to date
 	s.role = candidate
 	remoteServerTerm = remoteServerTerm + 1
-	currentTerm, success = c.requestVote(remoteServerTerm, remoteServerID,
+	_, success = c.requestVote(remoteServerTerm, remoteServerID,
 		invalidTerm, invalidServerID, s)
+
 	if success {
-		t.Fatalf("requestVote expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate changes to server state
 	validateServerState(s, follower, remoteServerTerm, invalidServerID,
 		invalidServerID, t)
 }
@@ -155,13 +154,19 @@ func TestCandidateFinalizeElection(t *testing.T) {
 	results := []requestVoteResult{{success: true,
 		serverTerm: electionTerm + 1}}
 
-	// Election starting term differs from current term, do nothing
+	// Election term differs from current term, do nothing
 	if success := c.finalizeElection(electionTerm, results, s); success {
-		t.Fatalf("finalizeElection expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "finalizeElection")
 	}
 
-	// One of election term exceeds election term, do nothing
-	if success := c.finalizeElection(electionTerm, results, s); success {
-		t.Fatalf("finalizeElection expected to fail")
+	validateServerState(s, candidate, electionTerm+1, testCandidateServerID,
+		invalidServerID, t)
+
+	// Election term equal to current and server term, election succeeds
+	if success := c.finalizeElection(electionTerm+1, results, s); !success {
+		t.Fatalf(methodExpectedToSucceedErrFmt, "finalizeElection")
 	}
+
+	validateServerState(s, leader, electionTerm+1, testCandidateServerID,
+		testCandidateServerID, t)
 }
