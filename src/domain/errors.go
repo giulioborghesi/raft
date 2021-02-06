@@ -2,9 +2,10 @@ package domain
 
 const (
 	// Error messages generated during server state validation
-	invalidRoleErrFmt   = "invalid role: expected: %d, actual: %d"
-	invalidTermErrFmt   = "invalid term: expected: %d, actual: %d"
-	invalidServerErrFmt = "invalid %s ID: expected: %d, actual: %d"
+	invalidRoleErrFmt       = "invalid role: expected: %d, actual: %d"
+	invalidEntryIndexErrFmt = "invalid entry index: expected: %d, actual: %d"
+	invalidTermErrFmt       = "invalid term: expected: %d, actual: %d"
+	invalidServerErrFmt     = "invalid %s ID: expected: %d, actual: %d"
 
 	// Fatal errors
 	notAvailableErrFmt    = "method %s not available on %s"

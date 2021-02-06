@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -25,13 +24,11 @@ func TestEncodeDecodeKey(t *testing.T) {
 	actualEntryTerm, actualEntryIndex := decodeEntry(s)
 
 	if actualEntryTerm != entryTerm {
-		t.Fatalf("invalid entry term: expected: %d, actual: %d",
-			entryTerm, actualEntryTerm)
+		t.Fatalf(invalidTermErrFmt, entryTerm, actualEntryTerm)
 	}
 
 	if actualEntryIndex != entryIndex {
-		t.Fatalf("invalid entry index: expected: %d, actual: %d",
-			entryTerm, actualEntryIndex)
+		t.Fatalf(invalidEntryIndexErrFmt, entryTerm, actualEntryIndex)
 	}
 }
 
@@ -67,10 +64,12 @@ func TestLeaderMakeCandidate(t *testing.T) {
 		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
 	// makeCandidate always returns false
-	success := l.makeCandidate(time.Millisecond, s)
-	if success {
-		t.Fatalf("makeCandidate did not return false")
+	if success := l.makeCandidate(time.Millisecond, s); success {
+		t.Fatalf(methodExpectedToFailErrFmt, "makeCandidate")
 	}
+
+	validateServerState(s, leader, testStartingTerm, testLeaderLeaderID,
+		testLeaderVotedFor, t)
 }
 
 func TestLeaderPrepareAppend(t *testing.T) {
@@ -79,54 +78,32 @@ func TestLeaderPrepareAppend(t *testing.T) {
 	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
 		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
-	// Store initial term
-	initialTerm := s.currentTerm()
-
 	// Initialize remote server term
 	remoteServerTerm := int64(initialTerm - 1)
-	remoteServerID := int64(s.leaderID + 1)
 
-	// Server term less than local term, prepareAppend should return false
-	success := l.prepareAppend(remoteServerTerm, remoteServerID, s)
-
-	if s.currentTerm() != initialTerm {
-		t.Fatalf("prepareAppend should not modify server term")
+	// Server term less than local term, prepareAppend should fail
+	if success := l.prepareAppend(remoteServerTerm,
+		testLeaderRemoteID, s); success {
+		t.Fatalf(methodExpectedToFailErrFmt, "prepareAppend")
 	}
 
-	if success {
-		t.Fatalf("prepareAppend expected to return false")
-	}
+	validateServerState(s, leader, testStartingTerm, testLeaderLeaderID,
+		testLeaderVotedFor, t)
 
 	// prepareAppend should change server role to follower and return true
 	remoteServerTerm = testStartingTerm + 1
-	success = l.prepareAppend(remoteServerTerm, remoteServerID, s)
-
-	if s.currentTerm() == initialTerm {
-		t.Fatalf("prepareAppend expected to modify server term")
+	if success := l.prepareAppend(remoteServerTerm,
+		testLeaderRemoteID, s); !success {
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
-	if s.currentTerm() != remoteServerTerm {
-		t.Fatalf("invalid term following prepareAppend: "+
-			"expected: %d, actual: %d", remoteServerTerm, s.currentTerm())
-	}
-
-	if s.role != follower {
-		t.Fatalf("server did not transition to follower role")
-	}
-
-	if s.leaderID != remoteServerID {
-		t.Fatalf("invalid leader ID: expected: %d, actual: %d",
-			remoteServerID, s.leaderID)
-	}
-
-	if !success {
-		t.Fatalf("prepareAppend expected to return true")
-	}
+	validateServerState(s, follower, remoteServerTerm, invalidServerID,
+		testLeaderRemoteID, t)
 
 	// prepareAppend should panic when two leaders in same term are detected
 	prepareAppend := func() {
 		remoteServerTerm = s.currentTerm()
-		l.prepareAppend(remoteServerTerm, remoteServerID, s)
+		l.prepareAppend(remoteServerTerm, testLeaderRemoteID-1, s)
 	}
 	utils.AssertPanic(t, "prepareAppend", prepareAppend)
 }
@@ -137,45 +114,29 @@ func TestLeaderRequestVote(t *testing.T) {
 	s := makeTestServerState(testStartingTerm, testLeaderVotedFor,
 		testLeaderServerID, testLeaderLeaderID, leader, testLeaderActive)
 
-	// Store initial term
-	initialTerm := s.currentTerm()
-
 	// Initialize remote server term
 	remoteServerTerm := int64(initialTerm - 1)
-	remoteServerID := int64(s.leaderID + 1)
 
-	// Server term less than local term, requestVote should return false
-	currentTerm, success := l.requestVote(remoteServerTerm,
-		remoteServerID, invalidTerm, invalidLogEntryIndex, s)
-
-	if currentTerm != initialTerm && s.currentTerm() != initialTerm {
-		t.Fatalf(fmt.Sprintf("Invalid term returned by requestVote: "+
-			"expected: %d, actual: %d", currentTerm, s.currentTerm()))
-	}
+	// Server term less than local term, requestVote should fail
+	_, success := l.requestVote(remoteServerTerm,
+		testLeaderRemoteID, invalidTerm, invalidLogEntryIndex, s)
 
 	if success {
-		t.Fatalf("requestVote expected to return false")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate changes to server state
-	validateServerState(s, leader, currentTerm, testLeaderLeaderID,
+	validateServerState(s, leader, testStartingTerm, testLeaderLeaderID,
 		testLeaderLeaderID, t)
 
 	// requestVote should change server role to follower and return true
 	remoteServerTerm = testStartingTerm + 1
-	currentTerm, success = l.requestVote(remoteServerTerm,
-		remoteServerID, initialTerm, invalidLogEntryIndex, s)
+	_, success = l.requestVote(remoteServerTerm,
+		testLeaderRemoteID, initialTerm, invalidLogEntryIndex, s)
 
 	if !success {
-		t.Fatalf("requestVote expected to return true")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	if currentTerm != remoteServerTerm {
-		t.Fatalf("invalid server term: expected: %d, actual: %d",
-			remoteServerTerm, currentTerm)
-	}
-
-	// Validate changes to server state
-	validateServerState(s, follower, currentTerm, remoteServerID,
+	validateServerState(s, follower, remoteServerTerm, testLeaderRemoteID,
 		invalidServerID, t)
 }
