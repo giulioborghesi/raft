@@ -99,18 +99,18 @@ func (l *raftLog) entryTerm(idx int64) int64 {
 	return invalidTerm
 }
 
-func (l *raftLog) entries(idx int64) ([]*service.LogEntry, int64) {
-	if idx < 0 {
-		panic(fmt.Sprintf("negative log indices not allowed"))
+func (l *raftLog) entries(entryIndex int64) ([]*service.LogEntry, int64) {
+	if entryIndex < 0 {
+		panic(fmt.Sprintf(invalidIndexErrFmt, entryIndex))
 	}
 
 	var entries []*service.LogEntry = nil
-	if idx < int64(len(l.e)) {
-		entries = l.e[idx:]
+	if entryIndex < int64(len(l.e)) {
+		entries = l.e[entryIndex:]
 	}
 
-	prevIdx := idx - 1
-	return entries, l.entryTerm(prevIdx)
+	prevEntryIndex := entryIndex - 1
+	return entries, l.entryTerm(prevEntryIndex)
 }
 
 func (l *raftLog) nextIndex() int64 {
