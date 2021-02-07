@@ -5,35 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 const (
-	testFollowerStartingTerm = 15
-	testFollowerVotedFor     = 1
-	testFollowerLeaderID     = 2
-	testFollowerRemoteID     = 4
+	testFollowerActive   = true
+	testFollowerLeaderID = 2
+	testFollowerRemoteID = 4
+	testFollowerServerID = 3
+	testFollowerVotedFor = 1
 )
-
-// MakeFollowerServerState creates and initializes an instance of serverState
-// for a server in follower mode
-func MakeFollowerServerState() *serverState {
-	dao := datasources.MakeTestServerStateDao()
-	dao.UpdateTerm(testFollowerStartingTerm)
-	dao.UpdateVotedFor(testFollowerVotedFor)
-
-	s := new(serverState)
-	s.dao = dao
-	s.log = &mockRaftLog{value: true}
-	s.leaderID = testFollowerLeaderID
-	return s
-}
 
 func TestFollowerMethodsThatPanic(t *testing.T) {
 	// Initialize server state and follower
 	f := new(followerRole)
-	s := new(serverState)
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Test finalizeElection
 	finalizeElection := func() {
@@ -51,7 +38,8 @@ func TestFollowerMethodsThatPanic(t *testing.T) {
 func TestFollowerAppendEntry(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Call to appendEntry should succeed
 	serverTerm := s.currentTerm()
@@ -62,7 +50,7 @@ func TestFollowerAppendEntry(t *testing.T) {
 	}
 
 	if !ok {
-		t.Errorf("appendEntry was not expected to fail")
+		t.Errorf(methodExpectedToSucceedErrFmt, "appendEntry")
 	}
 
 	// Server term different from local value, appendEntry should panic
@@ -81,68 +69,61 @@ func TestFollowerAppendEntry(t *testing.T) {
 func TestFollowerMakeCandidate(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Store initial term for later comparison
 	initialTerm := s.currentTerm()
 
-	// Initialize time and duration
+	// Time elapsed since last modification does not exceed timeout, fail
 	s.lastModified = time.Now()
-	to := time.Second
+	to := time.Minute
 	success := f.makeCandidate(to, s)
 
-	// Apart from patological cases during test execution, this should fail
 	if success {
-		t.Fatalf("makeCandidate was expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "makeCandidate")
 	}
 
-	if s.currentTerm() != initialTerm {
-		t.Fatalf("makeCandidate should not change the current term")
-	}
+	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
+		testFollowerLeaderID, t)
 
-	if s.role != follower {
-		t.Fatalf(fmt.Sprintf("invalid server role following makeCandidate: "+
-			"expected: %d, actual: %d", follower, s.role))
-	}
-
-	// Ensure time elapsed exceeds timeout
+	// Time elapsed since last modification exceeds timeout, succeed
 	s.lastModified = time.Now().Add(-to)
 	success = f.makeCandidate(to, s)
 
 	if !success {
-		t.Fatalf("makeCandidate was expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "makeCandidate")
 	}
 
-	if s.role != candidate {
-		t.Fatalf(fmt.Sprintf("invalid server role following makeCandidate: "+
-			"expected: %d, actual: %d", candidate, s.role))
-	}
+	validateServerState(s, candidate, initialTerm+1, testFollowerServerID,
+		invalidServerID, t)
 }
 
 func TestFollowerPrepareAppend(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Call to prepareAppend expected to succeed
-	serverTerm := s.currentTerm()
-	ok := f.prepareAppend(serverTerm, s.leaderID, s)
+	initialTerm := s.currentTerm()
+	serverTerm := initialTerm
+	ok := f.prepareAppend(serverTerm, testFollowerLeaderID, s)
 	if !ok {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
-	if s.currentTerm() != testFollowerStartingTerm {
-		t.Fatalf("prepareAppend should not change the current term")
-	}
+	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
+		testFollowerLeaderID, t)
 
 	// Server term less than local term, prepareAppend expected to fail
-	serverTerm = s.currentTerm() - 1
+	serverTerm = initialTerm - 1
 	ok = f.prepareAppend(serverTerm, testFollowerRemoteID, s)
 	if ok {
-		t.Fatalf("prepareAppend expected to fail")
+		t.Fatalf(methodExpectedToFailErrFmt, "prepareAppend")
 	}
 
-	if s.currentTerm() != testFollowerStartingTerm {
+	if s.currentTerm() != testStartingTerm {
 		t.Fatalf("prepareAppend should not change the current term")
 	}
 
@@ -151,7 +132,7 @@ func TestFollowerPrepareAppend(t *testing.T) {
 	serverTerm = s.currentTerm() + 1
 	ok = f.prepareAppend(serverTerm, testFollowerRemoteID, s)
 	if !ok {
-		t.Fatalf("prepareAppend expected to succeed")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "prepareAppend")
 	}
 
 	if s.currentTerm() != serverTerm {
@@ -167,12 +148,13 @@ func TestFollowerPrepareAppend(t *testing.T) {
 func TestFollowerProcessAppendEntryEvent(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
-	// processAppendEntryEvent should always return false
+	// processAppendEntryEvent should fail under all circumstances
 	ok := f.processAppendEntryEvent(0, 0, 0, s)
 	if ok {
-		t.Fatalf("processAppendEntryEvent expected to return false")
+		t.Fatalf(methodExpectedToFailErrFmt, "processAppendEntryEvent")
 	}
 
 }
@@ -180,7 +162,8 @@ func TestFollowerProcessAppendEntryEvent(t *testing.T) {
 func TestFollowerRequestVote(t *testing.T) {
 	// Create server state and follower instance
 	f := new(followerRole)
-	s := MakeFollowerServerState()
+	s := makeTestServerState(testStartingTerm, testFollowerVotedFor,
+		testFollowerServerID, testFollowerLeaderID, follower, testFollowerActive)
 
 	// Store initial term for further comparison
 	initialTerm := s.currentTerm()
@@ -188,26 +171,24 @@ func TestFollowerRequestVote(t *testing.T) {
 	// Already voted, return false
 	serverTerm := initialTerm
 	currentTerm, voted := f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
+		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
-		t.Fatalf("requestVote not expected to grant a vote")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, initialTerm, testFollowerVotedFor,
 		testFollowerLeaderID, t)
 
 	// Server did not vote yet, grant vote and return true
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		initialTerm, invalidLogID, s)
+		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
-		t.Fatalf("requestVote expected to grant a vote")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
 		testFollowerLeaderID, t)
 
@@ -215,13 +196,12 @@ func TestFollowerRequestVote(t *testing.T) {
 	serverTerm += 1
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		initialTerm, invalidLogID, s)
+		initialTerm, invalidLogEntryIndex, s)
 
 	if !voted {
-		t.Fatalf("requestVote expected to grant a vote")
+		t.Fatalf(methodExpectedToSucceedErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, testFollowerRemoteID,
 		invalidServerID, t)
 
@@ -229,13 +209,12 @@ func TestFollowerRequestVote(t *testing.T) {
 	serverTerm = currentTerm + 1
 	s.updateVotedFor(invalidServerID)
 	currentTerm, voted = f.requestVote(serverTerm, testFollowerRemoteID,
-		invalidTermID, invalidLogID, s)
+		invalidTerm, invalidLogEntryIndex, s)
 
 	if voted {
-		t.Fatalf("requestVote not expected to grant a vote")
+		t.Fatalf(methodExpectedToFailErrFmt, "requestVote")
 	}
 
-	// Validate server state
 	validateServerState(s, follower, currentTerm, invalidServerID,
 		invalidServerID, t)
 }

@@ -56,7 +56,7 @@ type leaderRole struct {
 
 func (l *leaderRole) appendEntry(_ []*service.LogEntry, _, _, _, _, _ int64,
 	s *serverState) (int64, bool) {
-	panic(fmt.Sprintf(roleErrCallFmt, "appendEntry", "leader"))
+	panic(fmt.Sprintf(notAvailableErrFmt, "appendEntry", roleName(leader)))
 }
 
 func (l *leaderRole) appendNewEntry(payload string, commitIndex int64,
@@ -103,7 +103,8 @@ func (l *leaderRole) entryStatus(key string, commitIndex int64,
 
 func (l *leaderRole) finalizeElection(_ int64, _ []requestVoteResult,
 	_ *serverState) bool {
-	panic(fmt.Sprintf(roleErrCallFmt, "finalizeElection", "leader"))
+	panic(fmt.Sprintf(notAvailableErrFmt, "finalizeElection",
+		roleName(leader)))
 }
 
 func (l *leaderRole) makeCandidate(_ time.Duration, s *serverState) bool {
@@ -132,7 +133,7 @@ func (l *leaderRole) prepareAppend(serverTerm int64, serverID int64,
 func (l *leaderRole) processAppendEntryEvent(appendTerm int64,
 	matchIndex int64, serverID int64, s *serverState) bool {
 	// Append entry succeeded and server term did not change
-	if appendTerm == s.currentTerm() && matchIndex != invalidLogID {
+	if appendTerm == s.currentTerm() && matchIndex != invalidLogEntryIndex {
 		l.matchIndices[serverID] = matchIndex
 		s.updateTargetCommitIndex(l.matchIndices)
 		return true
@@ -184,5 +185,6 @@ func (l *leaderRole) sendHeartbeat(to time.Duration, commitIndex int64,
 
 func (l *leaderRole) startElection(
 	s *serverState) []chan requestVoteResult {
-	panic(fmt.Sprintf(roleErrCallFmt, "startElection", "leader"))
+	panic(fmt.Sprintf(notAvailableErrFmt, "startElection",
+		roleName(leader)))
 }

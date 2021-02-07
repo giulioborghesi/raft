@@ -46,7 +46,7 @@ type entrySender struct {
 func makeEntrySender(appendTerm int64,
 	client clients.AbstractRaftClient) *entrySender {
 	return &entrySender{client: client, appendTerm: appendTerm,
-		matchIndex: invalidLogID}
+		matchIndex: invalidLogEntryIndex}
 }
 
 func (s *entrySender) nextEntryIndex() int64 {
@@ -59,7 +59,7 @@ func (s *entrySender) sendEntries(entries []*service.LogEntry,
 	// Reset entry sender state if a new term has started
 	if appendTerm > s.appendTerm {
 		s.appendTerm = appendTerm
-		s.matchIndex = invalidLogID
+		s.matchIndex = invalidLogEntryIndex
 		s.nextIndex = prevEntryIndex + 1
 	}
 
@@ -119,14 +119,14 @@ type entryReplicator struct {
 func newEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
 	rs AbstractRaftService) *entryReplicator {
 	// Create entry replicator
-	es := makeEntrySender(invalidTermID, c)
+	es := makeEntrySender(invalidTerm, c)
 	r := &entryReplicator{active: false, wait: true, sender: es, service: rs,
 		remoteServerID: remoteServerID}
 
 	// Initialize entry replicator state
 	r.nextIndex = 0
 	r.commitIndex = r.nextIndex
-	r.appendTerm = invalidTermID
+	r.appendTerm = invalidTerm
 	r.leaderTerm = r.appendTerm
 
 	// Initialize entry replicator condition variable and return
@@ -259,7 +259,7 @@ func (a *entryReplicator) stop() error {
 
 func (a *entryReplicator) updateLeaderTerm(newLeaderTerm int64) {
 	a.leaderTerm = newLeaderTerm
-	a.service.processAppendEntryEvent(newLeaderTerm, invalidLogID,
+	a.service.processAppendEntryEvent(newLeaderTerm, invalidLogEntryIndex,
 		invalidServerID)
 }
 
@@ -283,7 +283,7 @@ func (r *entryReplicator) updateMatchIndex(appendTerm int64,
 	for !done {
 		leaderTerm, prevEntryTerm := r.service.entryInfo(prevEntryIndex)
 		if leaderTerm > appendTerm {
-			return leaderTerm, invalidLogID
+			return leaderTerm, invalidLogEntryIndex
 		}
 
 		// Send empty entry to remote server
@@ -293,7 +293,7 @@ func (r *entryReplicator) updateMatchIndex(appendTerm int64,
 
 		// Return if new term is detected
 		if remoteServerTerm > appendTerm {
-			return remoteServerTerm, invalidLogID
+			return remoteServerTerm, invalidLogEntryIndex
 		}
 
 		// Update previous entry index

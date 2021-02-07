@@ -68,7 +68,7 @@ func (l *raftLog) appendEntry(entry *service.LogEntry) int64 {
 func (l *raftLog) appendEntries(entries []*service.LogEntry,
 	prevEntryTerm int64, prevEntryIndex int64) bool {
 	// Must replace all log entries
-	if prevEntryIndex == invalidLogID {
+	if prevEntryIndex == invalidLogEntryIndex {
 		l.e = entries
 		return true
 	}
@@ -86,7 +86,7 @@ func (l *raftLog) appendEntries(entries []*service.LogEntry,
 }
 
 func (l *raftLog) entryTerm(idx int64) int64 {
-	if idx == invalidLogID {
+	if idx == invalidLogEntryIndex {
 		return initialTerm
 	}
 
@@ -96,21 +96,21 @@ func (l *raftLog) entryTerm(idx int64) int64 {
 	}
 
 	// Log entry does not exist, return ID for invalid term
-	return invalidTermID
+	return invalidTerm
 }
 
-func (l *raftLog) entries(idx int64) ([]*service.LogEntry, int64) {
-	if idx < 0 {
-		panic(fmt.Sprintf("negative log indices not allowed"))
+func (l *raftLog) entries(entryIndex int64) ([]*service.LogEntry, int64) {
+	if entryIndex < 0 {
+		panic(fmt.Sprintf(invalidIndexErrFmt, entryIndex))
 	}
 
 	var entries []*service.LogEntry = nil
-	if idx < int64(len(l.e)) {
-		entries = l.e[idx:]
+	if entryIndex < int64(len(l.e)) {
+		entries = l.e[entryIndex:]
 	}
 
-	prevIdx := idx - 1
-	return entries, l.entryTerm(prevIdx)
+	prevEntryIndex := entryIndex - 1
+	return entries, l.entryTerm(prevEntryIndex)
 }
 
 func (l *raftLog) nextIndex() int64 {

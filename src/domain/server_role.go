@@ -6,12 +6,6 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
-const (
-	roleErrCallFmt          = "%s should not be called when the server is a %s"
-	wrongRoleErrFmt         = "server is a %s"
-	invalidRemoteTermErrFmt = "remote server term less than local term"
-)
-
 // serverRole defines the interface for a server's role in Raft. There exists
 // three roles in Raft: follower, candidate and leader. Each role implements a
 // distinct behavior for each method specified in the interface
