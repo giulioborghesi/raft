@@ -107,7 +107,6 @@ func (s *raftClusterSimulator) logs() [][]int64 {
 			log = append(log, entry.EntryTerm)
 		}
 		logs = append(logs, log)
-		fmt.Println(log)
 	}
 	return logs
 }
@@ -129,6 +128,11 @@ func (s *raftClusterSimulator) roles() []int64 {
 	return roles
 }
 
+// sendHeartbeat sends an heartbeat to the followers
+func (s *raftClusterSimulator) sendHearthbeat(serverID int64) {
+	s.services[serverID].sendHeartbeat(0)
+}
+
 // setConnections allows to activate / sever the connections between a server
 // and its peers. Connection states are changed only in one direction
 func (s *raftClusterSimulator) setConnections(serverID int64,
@@ -140,6 +144,10 @@ func (s *raftClusterSimulator) setConnections(serverID int64,
 	for i, status := range clientsStatus {
 		s.clients[serverID][i].(*mockRaftClient).active = status
 	}
+}
+
+func (s *raftClusterSimulator) setServerRole(serverID int64, role int) {
+	s.services[serverID].(*raftService).state.role = role
 }
 
 // startElection starts an election on the specified server
