@@ -119,12 +119,12 @@ func (s *raftService) lastModified() time.Time {
 }
 
 func (s *raftService) processAppendEntryEvent(
-	serverTerm int64, matchIndex int64, serverID int64) {
+	appendTerm int64, matchIndex int64, serverID int64) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
 
-	s.roles[s.state.role].processAppendEntryEvent(serverTerm, matchIndex,
+	s.roles[s.state.role].processAppendEntryEvent(appendTerm, matchIndex,
 		serverID, s.state)
 }
 

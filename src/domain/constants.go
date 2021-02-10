@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 const (
 	// Empty string
 	emptyString = ""
@@ -17,4 +19,5 @@ const (
 
 	// Unit test constants
 	testStartingTerm = 15
+	testSleepTime    = 10 * time.Millisecond
 )
