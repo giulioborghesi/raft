@@ -19,7 +19,7 @@ type serverRole interface {
 	appendNewEntry(string, int64, *serverState) (string, int64, error)
 
 	// entryStatus returns the status of a log entry given its key
-	entryStatus(string, int64, *serverState) (logEntryStatus, int64, error)
+	entryStatus(string, int64, *serverState) (LogEntryStatus, int64, error)
 
 	// finalizeElection processes the results of an election and handles the
 	// possible transitions from candidate state to either leader or follower

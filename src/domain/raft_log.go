@@ -29,11 +29,11 @@ func isRemoteLogCurrent(l abstractRaftLog, lastEntryTerm int64,
 	return false
 }
 
-// logEntryStatus represents the status of a log entry. A log entry is
+// LogEntryStatus represents the status of a log entry. A log entry is
 // committed if has been applied to the replicated state machine; is
 // appended if it has been appended to the log, but has not been applied
 // yet; and is lost if it cannot be found
-type logEntryStatus int64
+type LogEntryStatus int64
 
 // abstractRaftLog specifies the interface to be exposed by a log in Raft
 type abstractRaftLog interface {

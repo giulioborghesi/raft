@@ -55,7 +55,7 @@ func (f *followerRole) appendNewEntry(_ string, _ int64,
 }
 
 func (f *followerRole) entryStatus(_ string, _ int64,
-	s *serverState) (logEntryStatus, int64, error) {
+	s *serverState) (LogEntryStatus, int64, error) {
 	return invalid, s.leaderID,
 		fmt.Errorf(notAvailableErrFmt, "entryStatus", roleName(follower))
 }

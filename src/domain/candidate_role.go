@@ -25,7 +25,7 @@ func (c *candidateRole) appendNewEntry(_ string, _ int64,
 }
 
 func (c *candidateRole) entryStatus(_ string, _ int64,
-	s *serverState) (logEntryStatus, int64, error) {
+	s *serverState) (LogEntryStatus, int64, error) {
 	return invalid, s.leaderID,
 		fmt.Errorf(notAvailableErrFmt, "entryStatus", roleName(candidate))
 }
