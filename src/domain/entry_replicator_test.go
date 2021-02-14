@@ -35,7 +35,7 @@ func (c *mockRaftClientEntryReplicator) RequestVote(ctx context.Context,
 // mockRaftServiceEntryAppender implements a Raft service to be used for unit
 // testing entryAppender
 type mockRaftServiceEntryAppender struct {
-	unimplementedRaftService
+	UnimplementedRaftService
 	appendTerm     int64
 	prevEntryTerms []int64
 }

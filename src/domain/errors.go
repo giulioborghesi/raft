@@ -13,6 +13,7 @@ const (
 	termInconsistencyErr  = "remote server term less than local term"
 	multipleLeadersErrFmt = "multiple leaders detected during term %d"
 	invalidIndexErrFmt    = "log entry index %d is invalid"
+	invalidEntryStatus    = "invalid entry status: %d"
 
 	// Unit test errors
 	methodExpectedToFailErrFmt    = "method %s expected to fail"

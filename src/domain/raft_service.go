@@ -24,7 +24,7 @@ type AbstractRaftService interface {
 	// CommandStatus checks the status of a command that was previously sent to
 	// the replicated state machine. It is invoked by an external client of the
 	// Raft service
-	CommandStatus(string) (logEntryStatus, int64, error)
+	CommandStatus(string) (LogEntryStatus, int64, error)
 
 	// entryInfo returns the current leader term and the term of the log entry
 	// with the specified index
@@ -87,7 +87,7 @@ func (s *raftService) ApplyCommandAsync(payload string) (string,
 	return s.roles[s.state.role].appendNewEntry(payload, commitIndex, s.state)
 }
 
-func (s *raftService) CommandStatus(key string) (logEntryStatus,
+func (s *raftService) CommandStatus(key string) (LogEntryStatus,
 	int64, error) {
 	commitIndex := s.state.targetCommitIndex
 	return s.roles[s.state.role].entryStatus(key, commitIndex, s.state)
@@ -183,52 +183,52 @@ func (s *raftService) StartElection(to time.Duration) {
 	}
 }
 
-// unimplementedRaftService provides a basic implementation of a Raft service
+// UnimplementedRaftService provides a basic implementation of a Raft service
 // that can be specialized by its user. It is useful for unit tests, where only
 // the behavior of a few methods need to be changed
-type unimplementedRaftService struct{}
+type UnimplementedRaftService struct{}
 
-func (s *unimplementedRaftService) AppendEntry([]*service.LogEntry, int64,
+func (s *UnimplementedRaftService) AppendEntry([]*service.LogEntry, int64,
 	int64, int64, int64, int64) (int64, bool) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "AppendEntry"))
 }
 
-func (s *unimplementedRaftService) ApplyCommandAsync(string) (string,
+func (s *UnimplementedRaftService) ApplyCommandAsync(string) (string,
 	int64, error) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "ApplyCommandAsync"))
 }
 
-func (s *unimplementedRaftService) CommandStatus(string) (logEntryStatus,
+func (s *UnimplementedRaftService) CommandStatus(string) (LogEntryStatus,
 	int64, error) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "CommandStatus"))
 }
 
-func (s *unimplementedRaftService) entryInfo(int64) (int64, int64) {
+func (s *UnimplementedRaftService) entryInfo(int64) (int64, int64) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "entryInfo"))
 }
 
-func (s *unimplementedRaftService) entries(int64) ([]*service.LogEntry,
+func (s *UnimplementedRaftService) entries(int64) ([]*service.LogEntry,
 	int64, int64) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "entries"))
 }
 
-func (s *unimplementedRaftService) lastModified() time.Time {
+func (s *UnimplementedRaftService) lastModified() time.Time {
 	panic(fmt.Sprintf(notImplementedErrFmt, "lastModified"))
 }
 
-func (s *unimplementedRaftService) processAppendEntryEvent(_, _, _ int64) {
+func (s *UnimplementedRaftService) processAppendEntryEvent(_, _, _ int64) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "processAppendEntryEvent"))
 }
 
-func (s *unimplementedRaftService) RequestVote(int64, int64, int64,
+func (s *UnimplementedRaftService) RequestVote(int64, int64, int64,
 	int64) (int64, bool) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "RequestVote"))
 }
 
-func (s *unimplementedRaftService) sendHeartbeat(time.Duration) {
+func (s *UnimplementedRaftService) sendHeartbeat(time.Duration) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "sendHeartbeat"))
 }
 
-func (s *unimplementedRaftService) StartElection(time.Duration) {
+func (s *UnimplementedRaftService) StartElection(time.Duration) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "StartElection"))
 }

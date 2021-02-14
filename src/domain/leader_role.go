@@ -71,7 +71,7 @@ func (l *leaderRole) appendNewEntry(payload string, commitIndex int64,
 }
 
 func (l *leaderRole) entryStatus(key string, commitIndex int64,
-	s *serverState) (logEntryStatus, int64, error) {
+	s *serverState) (LogEntryStatus, int64, error) {
 	// Decode log entry key
 	logNextIndex := s.log.nextIndex()
 	entryTerm, entryIndex := decodeEntry(key)

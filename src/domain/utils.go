@@ -1,6 +1,26 @@
 package domain
 
-import "github.com/giulioborghesi/raft-implementation/src/service"
+import (
+	"fmt"
+
+	"github.com/giulioborghesi/raft-implementation/src/service"
+)
+
+// EntryStatusToString converts an entry status value to a string literal
+func EntryStatusToString(s LogEntryStatus) string {
+	switch s {
+	case appended:
+		return "appended"
+	case lost:
+		return "lost"
+	case invalid:
+		return "invalid"
+	case unknown:
+		return "unknown"
+	default:
+		panic(fmt.Sprintf(invalidEntryStatus, s))
+	}
+}
 
 // entryTermsToLogEntry converts a slice of entry terms into a slice of empty
 // log entries
