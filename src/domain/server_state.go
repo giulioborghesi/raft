@@ -59,7 +59,9 @@ func (s *serverState) updateTargetCommitIndex(matchIndices []int64) {
 
 	// Return index corresponding to half minus one of the servers
 	k := (len(indices) - 1) / 2
-	s.targetCommitIndex = utils.MaxInt64(s.targetCommitIndex, indices[k])
+	if s.log.entryTerm(indices[k]) == s.currentTerm() {
+		s.targetCommitIndex = utils.MaxInt64(s.targetCommitIndex, indices[k])
+	}
 }
 
 func (s *serverState) updateTerm(serverTerm int64) {
