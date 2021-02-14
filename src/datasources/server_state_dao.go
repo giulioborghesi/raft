@@ -158,7 +158,7 @@ func MakePersistentServerStateDao(pathA string, pathB string) ServerStateDao {
 
 	// At least one file must not be corrupted
 	if errorA != nil && errorB != nil {
-		panic("both log state file are corrupted!")
+		panic(fmt.Sprintf(corruptedLogFilesErrFmt, pathA, pathB))
 	}
 
 	// Ensure most current log state is used
