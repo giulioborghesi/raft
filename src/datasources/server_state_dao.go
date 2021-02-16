@@ -10,10 +10,6 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
-const (
-	permissions = 0777
-)
-
 // initializeLogStateFromEmptyFile creates a log state file and
 // initializes the log state to its default value
 func initializeLogStateFromEmptyFile(path string) (*os.File, int64, int64,

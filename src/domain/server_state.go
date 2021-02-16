@@ -7,8 +7,8 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
-// makeServerState creates a serverState instance
-func makeServerState(dao datasources.ServerStateDao,
+// MakeServerState creates a serverState instance
+func MakeServerState(dao datasources.ServerStateDao,
 	log abstractRaftLog, serverID int64) *serverState {
 	s := new(serverState)
 	s.dao = dao

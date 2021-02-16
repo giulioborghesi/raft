@@ -20,7 +20,7 @@ func createMockRaftService(vr []abstractVoteRequestor,
 	// Create a server state instance
 	dao := datasources.MakeInMemoryServerStateDao(0, -1)
 	log := &mockRaftLog{value: true}
-	s := makeServerState(dao, log, testServiceIntegrationLeaderID)
+	s := MakeServerState(dao, log, testServiceIntegrationLeaderID)
 
 	// Create and initialize Raft service
 	service := &raftService{state: s, roles: make(map[int]serverRole)}

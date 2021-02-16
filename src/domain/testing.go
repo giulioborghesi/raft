@@ -18,7 +18,7 @@ func makeTestServerState(currentTerm int64, votedFor int64, serverID int64,
 	dao := datasources.MakeInMemoryServerStateDao(currentTerm, votedFor)
 	log := &mockRaftLog{value: active}
 
-	s := makeServerState(dao, log, serverID)
+	s := MakeServerState(dao, log, serverID)
 	s.leaderID = leaderID
 	s.role = role
 	return s
