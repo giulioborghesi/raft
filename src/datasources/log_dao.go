@@ -2,15 +2,13 @@ package datasources
 
 import (
 	"bufio"
-	"encoding/binary"
-	"math"
 	"os"
 
 	"github.com/giulioborghesi/raft-implementation/src/service"
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
-// readLogEntries reads a slice of log entries from a file
+// readLogEntries reads a slice of log entries from a buffered io.Reader object
 func readLogEntries(r *bufio.Reader) ([]*service.LogEntry, []int64, int64) {
 	entries := make([]*service.LogEntry, 0)
 	offsets := make([]int64, 0)
@@ -51,106 +49,153 @@ func readLogEntries(r *bufio.Reader) ([]*service.LogEntry, []int64, int64) {
 	return entries, offsets, rBytes
 }
 
-// writeLogEntryToFile writes a slice of log entries to stable storage
-/*func writeLogEntriesToFile(f *os.File, entries []*service.LogEntry) error {
-	w := bufio.NewWriter(f)
+// writeLogEntries writes a slice of log entries to a buffered io.Writer object
+func writeLogEntries(w *bufio.Writer, offset int64,
+	entries []*service.LogEntry) ([]int64, int64, error) {
+	offsets := make([]int64, 0)
+	wBytes := int64(0)
 	for _, entry := range entries {
 		// Write entry term
-		if _, err := writeValue(w, entry.EntryTerm); err != nil {
-			return err
+		tBytes, err := utils.WriteValue(w, entry.EntryTerm)
+		if err != nil {
+			return nil, 0, err
 		}
 
-		// Write payload
-		slen := int64(len([]byte(entry.Payload)))
-		if _, err := writeValue(w, slen); err != nil {
-			return err
-		}
-
-		if _, err := writeValue(w, []byte(entry.Payload)); err != nil {
-			return err
+		// Write entry payload
+		pBytes, err := utils.WriteString(w, entry.Payload)
+		if err != nil {
+			return nil, 0, err
 		}
 
 		// Write checksum
-		checkSum := utils.Int64StringCheckSum(entry.Payload, entry.EntryTerm)
-		if _, err := writeValue(w, checkSum); err != nil {
-			return err
+		checksum := utils.Int64StringCheckSum(entry.Payload, entry.EntryTerm)
+		cBytes, err := utils.WriteValue(w, checksum)
+		if err != nil {
+			return nil, 0, err
 		}
-	}
 
-	// Flush changes to disk and return
-	return w.Flush()
-}*/
+		// Update written bytes and offset
+		wBytes += (tBytes + pBytes + cBytes)
+		offsets = append(offsets, wBytes+offset)
+	}
+	return offsets, wBytes, nil
+}
 
 // AbstractLogDao defines the interface of a log DAO object
 type AbstractLogDao interface {
-	// AppendEntry allows a client to append a log entry to the log and store
-	// it on durable storage
-	AppendEntry(*service.LogEntry) error
-
 	// AppendEntries appends multiple log entries to the log and store them on
-	// durable storage. Entries following the previous log index are dropped
-	AppendEntries([]*service.LogEntry, int64) error
+	// durable storage.
+	AppendEntries([]*service.LogEntry) error
+
+	// Entries returns the entries at and following the specified log entry
+	// index. It is the responsibility of the calling code to ensure that the
+	// specified log entry index is valid
+	Entries(int64) []*service.LogEntry
+
+	// EntryTerm returns the entry term of the log entry at the specified log
+	// entry index. It is the responsibility of the calling code to ensure that
+	// the specified log entry index is valid
+	EntryTerm(int64) int64
+
+	// LastEntryIndex returns the index of the last entry in the log
+	LastEntryIndex() int64
+
+	// RemoveEntries remove the log entries following the specified index. It
+	// is the responsibility of the calling code to ensure that the specified
+	// log entry index is valid
+	RemoveEntries(int64) error
 }
 
-// logDao implements the AbstractLogDao interface using an os file to store log
-// entries on durable storage
-type logDao struct {
+func MakeInMemoryLogDao(entries []*service.LogEntry) AbstractLogDao {
+	return &inMemoryLogDao{e: entries}
+}
+
+// inMemoryLogDao implements the AbstractLogDao interface using a slice of
+// LogEntry to store the
+type inMemoryLogDao struct {
+	e []*service.LogEntry
+}
+
+func (l *inMemoryLogDao) AppendEntries(entries []*service.LogEntry) error {
+	l.e = append(l.e, entries...)
+	return nil
+}
+
+func (l *inMemoryLogDao) Entries(entryIndex int64) []*service.LogEntry {
+	return l.e[entryIndex:]
+}
+
+func (l *inMemoryLogDao) EntryTerm(entryIndex int64) int64 {
+	return l.e[entryIndex].EntryTerm
+}
+
+func (l *inMemoryLogDao) LastEntryIndex() int64 {
+	return int64(len(l.e)) - 1
+}
+
+func (l *inMemoryLogDao) RemoveEntries(firstValidEntryIndex int64) error {
+	l.e = l.e[:firstValidEntryIndex+1]
+	return nil
+}
+
+// persistentLogDao implements the AbstractLogDao interface using an os.File
+// file to store the log entries on durable storage
+type persistentLogDao struct {
 	f       *os.File
 	buffer  []byte
 	offset  int64
 	offsets []int64
+	inMemoryLogDao
 }
 
-func MakeLogFromFile(f *os.File) (AbstractLogDao, []*service.LogEntry, error) {
-	return nil, nil, nil
-}
-
-func (l *logDao) AppendEntry(entry *service.LogEntry) error {
-	return l.AppendEntries([]*service.LogEntry{entry}, math.MaxInt64)
-}
-
-func (l *logDao) AppendEntries(entries []*service.LogEntry,
-	prevEntryIndex int64) error {
-	// Remove old entries if applicable
-	if prevEntryIndex < int64(len(l.offsets)) {
-		bytes := l.offsets[prevEntryIndex]
-		if err := l.f.Truncate(bytes); err != nil {
-			return err
-		}
-		l.offsets = l.offsets[:prevEntryIndex]
+func (l *persistentLogDao) AppendEntries(entries []*service.LogEntry) error {
+	// Nothing to do if no entry to write is passed
+	if len(entries) == 0 {
+		return nil
 	}
 
-	var bytes int64 = 0
-	offsets := make([]int64, 0)
+	// Store entries to in-memory storage
+	l.inMemoryLogDao.AppendEntries(entries)
 
+	// Create a buffered io.Writer object from log file and write entries to it
 	w := bufio.NewWriter(l.f)
-	for _, entry := range entries {
-		// Write entry term
-		nv := binary.PutVarint(l.buffer, entry.EntryTerm)
-		l.buffer = l.buffer[:nv]
-		nl, err := w.Write(l.buffer)
-		if err != nil {
-			return err
-		}
-
-		// Write payload
-		np, err := w.WriteString(entry.Payload)
-		if err != nil {
-			return err
-		}
-
-		// Accumulate bytes written and new offsets
-		offsets = append(offsets, l.offset+bytes)
-		bytes += int64(nl + np)
+	offsets, wBytes, err := writeLogEntries(w, l.offset, entries)
+	if err != nil {
+		return err
 	}
 
-	// Flush changes to disk
+	// Flush changes to durable storage
 	if err := w.Flush(); err != nil {
 		return err
 	}
 
 	// Update offsets and return
-	l.offset += bytes
+	l.offset += wBytes
 	l.offsets = append(l.offsets, offsets...)
+	return nil
+}
+
+func (l *persistentLogDao) EntryTerm(entryIndex int64) int64 {
+	return l.inMemoryLogDao.EntryTerm(entryIndex)
+}
+
+func (l *persistentLogDao) RemoveEntries(firstValidEntryIndex int64) error {
+	// Remove entries from in-memory storage
+	l.inMemoryLogDao.RemoveEntries(firstValidEntryIndex)
+
+	// Compute new file size
+	oBytes := int64(0)
+	if firstValidEntryIndex >= 0 {
+		oBytes = l.offsets[firstValidEntryIndex]
+	}
+
+	// Truncate file
+	if err := l.f.Truncate(oBytes); err != nil {
+		return err
+	}
+
+	// Update offsets and return
+	l.offset = oBytes
+	l.offsets = l.offsets[:firstValidEntryIndex+1]
 	return nil
 }

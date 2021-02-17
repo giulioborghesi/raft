@@ -26,24 +26,11 @@ func ReadString(r *bufio.Reader) (string, int64, error) {
 
 // ReadValue reads a value from a buffered io.Reader object
 func ReadValue(r *bufio.Reader, v interface{}) (int64, error) {
-	switch v {
-	case v.(*int64):
-		value := v.(*int64)
-		if err := binary.Read(r, binary.LittleEndian, value); err != nil {
-			return 0, err
-		}
-		rBytes := int64(binary.Size(*value))
-		return rBytes, nil
-	case v.(*[28]byte):
-		value := v.(*[28]byte)
-		if err := binary.Read(r, binary.LittleEndian, value); err != nil {
-			return 0, err
-		}
-		rBytes := int64(binary.Size(value))
-		return rBytes, nil
-	default:
-		panic(unsupportedValueErr)
+	if err := binary.Read(r, binary.LittleEndian, v); err != nil {
+		return 0, err
 	}
+	rBytes := int64(binary.Size(v))
+	return rBytes, nil
 }
 
 // WriteString writes a string to a buffered io.Writer object

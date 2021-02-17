@@ -7,13 +7,60 @@ import (
 )
 
 const (
-	testString                = "lorem ipsum dolor sit amet"
-	testValue                 = 534208
-	testBytesValue            = 8
-	testBytesString           = 34
+	// Values used during test
+	testString = "lorem ipsum dolor sit amet"
+	testValueA = 534208
+	testValueB = 3495
+
+	// Number of bytes read / written during test
+	testBytesChecksum = 28
+	testBytesString   = 34
+	testBytesValue    = 8
+
+	// Initial buffer capacity
 	testInitialBufferCapacity = 1024
 )
 
+func TestReadWriteChecksum(t *testing.T) {
+	// Create buffer used during IO
+	b := make([]byte, 0, testInitialBufferCapacity)
+	buffer := bytes.NewBuffer(b)
+
+	// Write value to buffer
+	w := bufio.NewWriter(buffer)
+
+	checksum := Int64PairCheckSum(testValueA, testValueB)
+	bytesWritten, err := WriteValue(w, checksum)
+
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	if err = w.Flush(); err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	if bytesWritten != testBytesChecksum {
+		t.Fatalf(unexpectedBytesErrFmt, testBytesChecksum, bytesWritten)
+	}
+
+	// Read value from buffer
+	r := bufio.NewReader(buffer)
+	var actualChecksum [28]byte
+	bytesRead, err := ReadValue(r, &actualChecksum)
+
+	if err != nil {
+		t.Fatalf(unexpectedErrFmt, err)
+	}
+
+	if bytesRead != bytesWritten {
+		t.Fatalf(unexpectedBytesErrFmt, testBytesValue, bytesWritten)
+	}
+
+	if actualChecksum != checksum {
+		t.Fatalf(unexpectedValueErrFmt, checksum, actualChecksum)
+	}
+}
 func TestReadWriteInt64(t *testing.T) {
 	// Create buffer used during IO
 	b := make([]byte, 0, testInitialBufferCapacity)
@@ -21,7 +68,7 @@ func TestReadWriteInt64(t *testing.T) {
 
 	// Write value to buffer
 	w := bufio.NewWriter(buffer)
-	bytesWritten, err := WriteValue(w, int64(testValue))
+	bytesWritten, err := WriteValue(w, int64(testValueA))
 
 	if err != nil {
 		t.Fatalf(unexpectedErrFmt, err)
@@ -48,8 +95,8 @@ func TestReadWriteInt64(t *testing.T) {
 		t.Fatalf(unexpectedBytesErrFmt, testBytesValue, bytesWritten)
 	}
 
-	if value != testValue {
-		t.Fatalf(unexpectedValueErrFmt, testValue, value)
+	if value != testValueA {
+		t.Fatalf(unexpectedValueErrFmt, testValueA, value)
 	}
 }
 
