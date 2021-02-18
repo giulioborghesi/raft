@@ -25,9 +25,8 @@ func makeRaftClusterSimulator(currentTerm []int64, votedFor []int64,
 		// Create the server state
 		dao := datasources.MakeInMemoryServerStateDao(currentTerm[i],
 			votedFor[i])
-		logDao := datasources.MakeInMemoryLogDao(
-			entryTermsToLogEntry(entryTerms[i]))
-		log := &raftLog{AbstractLogDao: logDao}
+		log := &raftLog{AbstractLogDao: datasources.MakeInMemoryLogDao(
+			entryTermsToLogEntry(entryTerms[i]))}
 		s := MakeServerState(dao, log, int64(i))
 
 		// Create the Raft service
