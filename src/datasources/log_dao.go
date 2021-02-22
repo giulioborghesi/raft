@@ -106,6 +106,8 @@ type AbstractLogDao interface {
 	RemoveEntries(int64) error
 }
 
+// MakeInMemoryLogDao creates an in-memory version of a log dao from a slice
+// of log entries
 func MakeInMemoryLogDao(entries []*service.LogEntry) AbstractLogDao {
 	return &inMemoryLogDao{e: entries}
 }
@@ -138,14 +140,41 @@ func (l *inMemoryLogDao) RemoveEntries(firstValidEntryIndex int64) error {
 	return nil
 }
 
+// MakePersistentLogDao creates a persistent log dao whose log entries are
+// initialized from file
+func MakePersistentLogDao(logFilePath string) AbstractLogDao {
+	// Open or create the log file if it does not exist
+	f, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE, permissions)
+	if err != nil {
+		panic(err)
+	}
+
+	// Read log entries from file
+	r := bufio.NewReader(f)
+	entries, offsets, offset := readLogEntries(r)
+	if err = f.Truncate(offset); err != nil {
+		panic(err)
+	}
+
+	// Set IO offset to end of file
+	offset, err = f.Seek(offset, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create and return persistent log dao
+	dao := MakeInMemoryLogDao(entries)
+	return &persistentLogDao{f: f, offset: offset, offsets: offsets,
+		AbstractLogDao: dao}
+}
+
 // persistentLogDao implements the AbstractLogDao interface using an os.File
 // file to store the log entries on durable storage
 type persistentLogDao struct {
 	f       *os.File
-	buffer  []byte
 	offset  int64
 	offsets []int64
-	inMemoryLogDao
+	AbstractLogDao
 }
 
 func (l *persistentLogDao) AppendEntries(entries []*service.LogEntry) error {
@@ -155,7 +184,7 @@ func (l *persistentLogDao) AppendEntries(entries []*service.LogEntry) error {
 	}
 
 	// Store entries to in-memory storage
-	l.inMemoryLogDao.AppendEntries(entries)
+	l.AbstractLogDao.AppendEntries(entries)
 
 	// Create a buffered io.Writer object from log file and write entries to it
 	w := bufio.NewWriter(l.f)
@@ -176,12 +205,12 @@ func (l *persistentLogDao) AppendEntries(entries []*service.LogEntry) error {
 }
 
 func (l *persistentLogDao) EntryTerm(entryIndex int64) int64 {
-	return l.inMemoryLogDao.EntryTerm(entryIndex)
+	return l.AbstractLogDao.EntryTerm(entryIndex)
 }
 
 func (l *persistentLogDao) RemoveEntries(firstValidEntryIndex int64) error {
 	// Remove entries from in-memory storage
-	l.inMemoryLogDao.RemoveEntries(firstValidEntryIndex)
+	l.AbstractLogDao.RemoveEntries(firstValidEntryIndex)
 
 	// Compute new file size
 	oBytes := int64(0)
@@ -192,6 +221,12 @@ func (l *persistentLogDao) RemoveEntries(firstValidEntryIndex int64) error {
 	// Truncate file
 	if err := l.f.Truncate(oBytes); err != nil {
 		return err
+	}
+
+	// Set IO offset to end of file
+	oBytes, err := l.f.Seek(oBytes, 0)
+	if err != nil {
+		panic(err)
 	}
 
 	// Update offsets and return

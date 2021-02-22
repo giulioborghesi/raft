@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 	"time"
+
+	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
 func TestRaftClusterElection(t *testing.T) {
@@ -15,26 +17,26 @@ func TestRaftClusterElection(t *testing.T) {
 	s.startElection(leaderID, time.Duration(0))
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{0, 0, 0}, s.castedVotes(), t)
-	validateResults([]int64{leader, follower, follower}, s.roles(), t)
-	validateResults([]int64{1, 1, 1}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 0}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{leader, follower, follower}, s.roles(), t)
+	utils.ValidateResults([]int64{1, 1, 1}, s.terms(), t)
 
 	// Server 1 starts an election but does not get elected
 	leaderID = int64(1)
 	s.startElection(leaderID, time.Minute)
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{0, 0, 0}, s.castedVotes(), t)
-	validateResults([]int64{leader, follower, follower}, s.roles(), t)
-	validateResults([]int64{1, 1, 1}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 0}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{leader, follower, follower}, s.roles(), t)
+	utils.ValidateResults([]int64{1, 1, 1}, s.terms(), t)
 
 	// Server 1 starts an election and gets elected
 	s.startElection(leaderID, time.Duration(0))
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{1, 1, 1}, s.castedVotes(), t)
-	validateResults([]int64{follower, leader, follower}, s.roles(), t)
-	validateResults([]int64{2, 2, 2}, s.terms(), t)
+	utils.ValidateResults([]int64{1, 1, 1}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, leader, follower}, s.roles(), t)
+	utils.ValidateResults([]int64{2, 2, 2}, s.terms(), t)
 
 	// One connection fails. Server 2 starts an election gets elected
 	leaderID = int64(2)
@@ -42,17 +44,17 @@ func TestRaftClusterElection(t *testing.T) {
 	s.startElection(leaderID, time.Duration(0))
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{2, 1, 2}, s.castedVotes(), t)
-	validateResults([]int64{follower, leader, leader}, s.roles(), t)
-	validateResults([]int64{3, 2, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{2, 1, 2}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, leader, leader}, s.roles(), t)
+	utils.ValidateResults([]int64{3, 2, 3}, s.terms(), t)
 
 	// Restore connections with all servers
 	s.restoreConnections(leaderID)
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{2, -1, 2}, s.castedVotes(), t)
-	validateResults([]int64{follower, follower, leader}, s.roles(), t)
-	validateResults([]int64{3, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{2, -1, 2}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, follower, leader}, s.roles(), t)
+	utils.ValidateResults([]int64{3, 3, 3}, s.terms(), t)
 
 	// Teardown cluster
 	s.tearDown()
@@ -68,24 +70,24 @@ func TestRaftClusterElectionAndAppend(t *testing.T) {
 	s.startElection(leaderID, time.Duration(0))
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{leaderID, leaderID, leaderID}, s.castedVotes(), t)
-	validateResults([]int64{follower, follower, leader}, s.roles(), t)
-	validateResults([]int64{6, 6, 6}, s.terms(), t)
+	utils.ValidateResults([]int64{leaderID, leaderID, leaderID}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, follower, leader}, s.roles(), t)
+	utils.ValidateResults([]int64{6, 6, 6}, s.terms(), t)
 
 	for _, log := range s.logs() {
-		validateResults(log, []int64{1, 5, 5, 5}, t)
+		utils.ValidateResults(log, []int64{1, 5, 5, 5}, t)
 	}
 
 	// A new entry is appended to the leader's log
 	s.applyCommandAsync(leaderID)
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{leaderID, leaderID, leaderID}, s.castedVotes(), t)
-	validateResults([]int64{follower, follower, leader}, s.roles(), t)
-	validateResults([]int64{6, 6, 6}, s.terms(), t)
+	utils.ValidateResults([]int64{leaderID, leaderID, leaderID}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, follower, leader}, s.roles(), t)
+	utils.ValidateResults([]int64{6, 6, 6}, s.terms(), t)
 
 	for _, log := range s.logs() {
-		validateResults(log, []int64{1, 5, 5, 5, 6}, t)
+		utils.ValidateResults(log, []int64{1, 5, 5, 5, 6}, t)
 	}
 
 	// Teardown cluster
@@ -103,13 +105,13 @@ func TestRaftClusterFailedElection(t *testing.T) {
 	s.startElection(leaderID, time.Duration(0))
 	time.Sleep(testSleepTime)
 
-	validateResults([]int64{-1, leaderID, -1}, s.castedVotes(), t)
-	validateResults([]int64{follower, follower, follower}, s.roles(), t)
-	validateResults([]int64{8, 6, 8}, s.terms(), t)
+	utils.ValidateResults([]int64{-1, leaderID, -1}, s.castedVotes(), t)
+	utils.ValidateResults([]int64{follower, follower, follower}, s.roles(), t)
+	utils.ValidateResults([]int64{8, 6, 8}, s.terms(), t)
 
 	expectedLogs := [][]int64{{1, 1, 1}, {1, 4, 4}, {1, 5, 5, 5}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Teardown cluster
@@ -129,13 +131,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles := []int64{leader, follower, follower, follower, leader}
-	validateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{2, 2, 3, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{2, 2, 3, 3, 3}, s.terms(), t)
 
 	expectedLogs := [][]int64{{1, 2}, {1, 2}, {1}, {1}, {1}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 4 loses connections with all servers and also receives an apply
@@ -145,13 +147,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{leader, follower, follower, follower, leader}
-	validateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{2, 2, 3, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{2, 2, 3, 3, 3}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 2}, {1, 2}, {1}, {1}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 4 dies and server 0 comes back to life and starts an election
@@ -161,13 +163,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{candidate, follower, follower, follower, leader}
-	validateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{3, 3, 3, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{3, 3, 3, 3, 3}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 2}, {1, 2}, {1}, {1}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 0 was not elected. After timeout, it starts a second election
@@ -175,13 +177,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{leader, follower, follower, follower, leader}
-	validateResults([]int64{0, 0, 0, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{4, 4, 4, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 0, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{4, 4, 4, 3, 3}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 2}, {1, 2}, {1, 2}, {1}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 0 loses all connections with other servers while receiving an
@@ -191,13 +193,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{leader, follower, follower, follower, leader}
-	validateResults([]int64{0, 0, 0, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{4, 4, 4, 3, 3}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 0, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{4, 4, 4, 3, 3}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 2, 4}, {1, 2}, {1, 2}, {1}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 4 now comes back to life
@@ -205,13 +207,13 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{leader, follower, follower, follower, follower}
-	validateResults([]int64{0, 0, 0, 4, -1}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{4, 4, 4, 3, 4}, s.terms(), t)
+	utils.ValidateResults([]int64{0, 0, 0, 4, -1}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{4, 4, 4, 3, 4}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 2, 4}, {1, 2}, {1, 2}, {1, 3}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Server 4 starts an election and gets elected
@@ -219,39 +221,39 @@ func TestRaftClusterPaperScenario(t *testing.T) {
 	time.Sleep(testSleepTime)
 
 	roles = []int64{follower, follower, follower, follower, leader}
-	validateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
+	utils.ValidateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Cluster state doesn't change when connections are re-established
 	s.restoreConnections(0)
 
 	roles = []int64{follower, follower, follower, follower, leader}
-	validateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
+	utils.ValidateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Sending an heartbeat won't change the cluster state
 	s.sendHearthbeat(0)
 
 	roles = []int64{follower, follower, follower, follower, leader}
-	validateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
-	validateResults(roles, s.roles(), t)
-	validateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
+	utils.ValidateResults([]int64{-1, 4, 4, 4, 4}, s.castedVotes(), t)
+	utils.ValidateResults(roles, s.roles(), t)
+	utils.ValidateResults([]int64{5, 5, 5, 5, 5}, s.terms(), t)
 
 	expectedLogs = [][]int64{{1, 3}, {1, 3}, {1, 3}, {1, 3}, {1, 3}}
 	for i, log := range s.logs() {
-		validateResults(expectedLogs[i], log, t)
+		utils.ValidateResults(expectedLogs[i], log, t)
 	}
 
 	// Teardown cluster

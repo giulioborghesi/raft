@@ -46,18 +46,6 @@ func validateServerState(s *serverState, expectedRole int, expectedTerm int64,
 	}
 }
 
-func validateResults(expected []int64, actual []int64, t *testing.T) {
-	if len(expected) != len(actual) {
-		t.Fatalf(sizeMismatchErrFmt, len(expected), len(actual))
-	}
-
-	for i := 0; i < len(expected); i++ {
-		if expected[i] != actual[i] {
-			t.Fatalf(valueMismatchErrFmt, i, expected[i], actual[i])
-		}
-	}
-}
-
 // mockRaftClient implements a RaftClient object that communicates with other
 // servers through direct calls to their RaftService objects instead of using
 // gRPC calls
