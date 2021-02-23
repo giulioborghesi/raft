@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/giulioborghesi/raft-implementation/src/clients"
 	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
@@ -50,6 +51,35 @@ type AbstractRaftService interface {
 	// StartElection initiates an election if the time elapsed since the last
 	// server update exceeds the election timeout
 	StartElection(time.Duration)
+}
+
+// MakeRaftService creates and return an instance of a Raft server
+func MakeRaftService(s *serverState,
+	serversInfo []*clients.ServerInfo) AbstractRaftService {
+	// Initialize Raft service
+	service := &raftService{state: s}
+	service.roles[follower] = &followerRole{}
+
+	// Create entry replicators and vote requestors
+	ers := make([]abstractEntryReplicator, 0, len(serversInfo))
+	vrs := make([]abstractVoteRequestor, 0, len(serversInfo))
+
+	for _, serverInfo := range serversInfo {
+		conn := clients.Connect(serverInfo.Address)
+		client := clients.MakeRaftClient(conn, serverInfo.ServerID)
+
+		er := makeEntryReplicator(serverInfo.ServerID, client, service)
+		vr := makeVoteRequestor(client)
+
+		ers = append(ers, er)
+		vrs = append(vrs, vr)
+	}
+
+	// Finalize candidate and leader initialization
+	clusterSize := len(serversInfo) + 1
+	service.roles[candidate] = makeCandidateRole(vrs)
+	service.roles[leader] = makeLeaderRole(ers, s.leaderID, clusterSize)
+	return service
 }
 
 // raftService implements the AbstractRaftService interface

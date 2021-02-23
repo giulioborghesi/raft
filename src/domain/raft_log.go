@@ -52,6 +52,12 @@ type abstractRaftLog interface {
 	nextIndex() int64
 }
 
+// MakeRaftLog creates and returns an instance of raftLog given an abstract
+// log dao object
+func MakeRaftLog(dao datasources.AbstractLogDao) abstractRaftLog {
+	return &raftLog{AbstractLogDao: dao}
+}
+
 // raftLog implements the abstractRaftLog interface. Log entries are stored
 // in memory for fast access as well as on permanent storage
 type raftLog struct {

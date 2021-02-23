@@ -113,7 +113,7 @@ type entryReplicator struct {
 	*sync.Cond
 }
 
-// makeEntryReplicator creates an instance of entryReplicator. The object will
+// newEntryReplicator creates an instance of entryReplicator. The object will
 // be initialized with an invalid term ID to ensure that log entries starts to
 // be replicated only after receiving a signal from the current leader
 func newEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
@@ -135,7 +135,7 @@ func newEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
 	return r
 }
 
-// NewEntryReplicator will create and start a new instance of entry replicator
+// makeEntryReplicator will create and start a new instance of entry replicator
 func makeEntryReplicator(remoteServerID int64, c clients.AbstractRaftClient,
 	rs AbstractRaftService) *entryReplicator {
 	// Create entry replicator

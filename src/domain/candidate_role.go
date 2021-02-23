@@ -8,6 +8,11 @@ import (
 	"github.com/giulioborghesi/raft-implementation/src/utils"
 )
 
+// makeCandidateRole creates and initializes an instance of candidateRole
+func makeCandidateRole(requestors []abstractVoteRequestor) *candidateRole {
+	return &candidateRole{voteRequestors: requestors}
+}
+
 // candidateRole implements the serverRole interface for a candidate server
 type candidateRole struct {
 	voteRequestors []abstractVoteRequestor

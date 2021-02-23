@@ -13,6 +13,11 @@ const (
 	maxCount = 15
 )
 
+type ServerInfo struct {
+	Address  string
+	ServerID int64
+}
+
 // AbstractRaftClient is a thin wrapper around around service.RaftClient. It
 // provides syntactic sugar to marshall / unmarshall RPC requests / responses
 type AbstractRaftClient interface {
@@ -22,6 +27,15 @@ type AbstractRaftClient interface {
 	// RequestVote sends a RequestVote RPC call to a remote server. The request
 	// occurs within a context that must be supplied by the caller
 	RequestVote(context.Context, int64, int64, int64, int64) (int64, bool, error)
+}
+
+// Connect creates a GRPC connection to a target server
+func Connect(address string) grpc.ClientConnInterface {
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	return conn
 }
 
 // MakeRaftClient creates a new Raft client given a RPC connection and the
