@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/giulioborghesi/raft-implementation/src/clients"
 	"github.com/giulioborghesi/raft-implementation/src/service"
 )
 
@@ -34,8 +35,8 @@ type AbstractRaftService interface {
 	// index, together with the current term and the previous entry term
 	entries(int64) ([]*service.LogEntry, int64, int64)
 
-	// lastModified returns the timestamp of last server update
-	lastModified() time.Time
+	// LastModified returns the timestamp of last server update
+	LastModified() time.Time
 
 	// processAppendEntryEvent processes an event generated while trying to
 	// append a log entry to a remote server log
@@ -44,12 +45,42 @@ type AbstractRaftService interface {
 	// RequestVote handles an incoming RequestVote RPC call
 	RequestVote(int64, int64, int64, int64) (int64, bool)
 
-	// sendHeartbeat exposes an endpoint to send heartbeats to followers
-	sendHeartbeat(time.Duration)
+	// SendHeartbeat exposes an endpoint to send heartbeats to followers
+	SendHeartbeat(time.Duration)
 
 	// StartElection initiates an election if the time elapsed since the last
 	// server update exceeds the election timeout
 	StartElection(time.Duration)
+}
+
+// MakeRaftService creates and return an instance of a Raft server
+func MakeRaftService(s *serverState,
+	serversInfo []*clients.ServerInfo) AbstractRaftService {
+	// Initialize Raft service
+	service := &raftService{state: s}
+	service.roles = make(map[int]serverRole)
+	service.roles[follower] = &followerRole{}
+
+	// Create entry replicators and vote requestors
+	ers := make([]abstractEntryReplicator, 0, len(serversInfo))
+	vrs := make([]abstractVoteRequestor, 0, len(serversInfo))
+
+	for _, serverInfo := range serversInfo {
+		conn := clients.Connect(serverInfo.Address)
+		client := clients.MakeRaftClient(conn, serverInfo.ServerID)
+
+		er := makeEntryReplicator(serverInfo.ServerID, client, service)
+		vr := makeVoteRequestor(client)
+
+		ers = append(ers, er)
+		vrs = append(vrs, vr)
+	}
+
+	// Finalize candidate and leader initialization
+	clusterSize := len(serversInfo) + 1
+	service.roles[candidate] = makeCandidateRole(vrs)
+	service.roles[leader] = makeLeaderRole(ers, s.serverID, clusterSize)
+	return service
 }
 
 // raftService implements the AbstractRaftService interface
@@ -109,7 +140,7 @@ func (s *raftService) entries(entryIndex int64) ([]*service.LogEntry, int64,
 	return entries, s.state.currentTerm(), prevEntryTerm
 }
 
-func (s *raftService) lastModified() time.Time {
+func (s *raftService) LastModified() time.Time {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
@@ -140,7 +171,7 @@ func (s *raftService) RequestVote(remoteServerTerm int64, remoteServerID int64,
 		remoteServerID, lastEntryTerm, lastEntryIndex, s.state)
 }
 
-func (s *raftService) sendHeartbeat(to time.Duration) {
+func (s *raftService) SendHeartbeat(to time.Duration) {
 	// Lock access to server state
 	s.Lock()
 	defer s.Unlock()
@@ -212,7 +243,7 @@ func (s *UnimplementedRaftService) entries(int64) ([]*service.LogEntry,
 	panic(fmt.Sprintf(notImplementedErrFmt, "entries"))
 }
 
-func (s *UnimplementedRaftService) lastModified() time.Time {
+func (s *UnimplementedRaftService) LastModified() time.Time {
 	panic(fmt.Sprintf(notImplementedErrFmt, "lastModified"))
 }
 
@@ -225,7 +256,7 @@ func (s *UnimplementedRaftService) RequestVote(int64, int64, int64,
 	panic(fmt.Sprintf(notImplementedErrFmt, "RequestVote"))
 }
 
-func (s *UnimplementedRaftService) sendHeartbeat(time.Duration) {
+func (s *UnimplementedRaftService) SendHeartbeat(time.Duration) {
 	panic(fmt.Sprintf(notImplementedErrFmt, "sendHeartbeat"))
 }
 

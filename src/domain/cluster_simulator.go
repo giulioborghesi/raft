@@ -25,8 +25,9 @@ func makeRaftClusterSimulator(currentTerm []int64, votedFor []int64,
 		// Create the server state
 		dao := datasources.MakeInMemoryServerStateDao(currentTerm[i],
 			votedFor[i])
-		log := &raftLog{e: entryTermsToLogEntry(entryTerms[i])}
-		s := makeServerState(dao, log, int64(i))
+		log := &raftLog{AbstractLogDao: datasources.MakeInMemoryLogDao(
+			entryTermsToLogEntry(entryTerms[i]))}
+		s := MakeServerState(dao, log, int64(i))
 
 		// Create the Raft service
 		service := &raftService{state: s, roles: make(map[int]serverRole)}
@@ -130,7 +131,7 @@ func (s *raftClusterSimulator) roles() []int64 {
 
 // sendHeartbeat sends an heartbeat to the followers
 func (s *raftClusterSimulator) sendHearthbeat(serverID int64) {
-	s.services[serverID].sendHeartbeat(0)
+	s.services[serverID].SendHeartbeat(0)
 }
 
 // setConnections allows to activate / sever the connections between a server

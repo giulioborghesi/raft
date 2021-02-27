@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/base64"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,14 @@ func decodeEntry(encodedKey string) (int64, int64) {
 
 	// Return decoded entry term and index
 	return int64(entryTerm), int64(entryIndex)
+}
+
+// makeLeaderRole creates and initializes an instance of leaderRole
+func makeLeaderRole(replicators []abstractEntryReplicator,
+	serverID int64, clusterSize int) *leaderRole {
+	matchIndices := make([]int64, clusterSize)
+	matchIndices[serverID] = math.MaxInt64
+	return &leaderRole{replicators: replicators, matchIndices: matchIndices}
 }
 
 // leaderRole implements the serverRole interface for a leader server

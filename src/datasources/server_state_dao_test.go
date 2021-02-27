@@ -24,8 +24,8 @@ func TestInitializeLogStateFromFile(t *testing.T) {
 	file, currentTerm, votedFor, err :=
 		initializeLogStateFromFile(testFileA)
 
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 0, currentTerm)
-	utils.ValidateResult(t, utils.InvalidVotedForErrFmt, -1, votedFor)
+	utils.ValidateResult(0, currentTerm, t)
+	utils.ValidateResult(-1, votedFor, t)
 
 	if err != nil {
 		t.Fatalf(utils.UnexpectedErrFmt, "none", err)
@@ -42,8 +42,8 @@ func TestInitializeLogStateFromFile(t *testing.T) {
 	file, currentTerm, votedFor, err =
 		initializeLogStateFromFile(testFileA)
 
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 0, currentTerm)
-	utils.ValidateResult(t, utils.InvalidVotedForErrFmt, -1, votedFor)
+	utils.ValidateResult(0, currentTerm, t)
+	utils.ValidateResult(-1, votedFor, t)
 
 	if err != io.EOF {
 		t.Fatalf(utils.UnexpectedErrFmt, "EOF", err)
@@ -83,8 +83,8 @@ func TestReadWriteLogState(t *testing.T) {
 		t.Fatalf(fmt.Sprintf("%v", err))
 	}
 
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 15, actualTerm)
-	utils.ValidateResult(t, utils.InvalidVotedForErrFmt, 2, actualVotedFor)
+	utils.ValidateResult(15, actualTerm, t)
+	utils.ValidateResult(2, actualVotedFor, t)
 
 	// Close and delete log state file
 	file.Close()
@@ -96,7 +96,7 @@ func TestInMemoryServerStateDao(t *testing.T) {
 
 	// Fetch current term
 	currentTerm := s.CurrentTerm()
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 0, currentTerm)
+	utils.ValidateResult(0, currentTerm, t)
 
 	// Update voted for
 	err := s.UpdateVotedFor(5)
@@ -106,8 +106,8 @@ func TestInMemoryServerStateDao(t *testing.T) {
 
 	// Check current term and voted for
 	currentTerm, votedFor := s.VotedFor()
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 0, currentTerm)
-	utils.ValidateResult(t, utils.InvalidVotedForErrFmt, 5, votedFor)
+	utils.ValidateResult(0, currentTerm, t)
+	utils.ValidateResult(5, votedFor, t)
 
 	// Update term
 	err = s.UpdateTerm(8)
@@ -117,6 +117,6 @@ func TestInMemoryServerStateDao(t *testing.T) {
 
 	// Check current term and voted for
 	currentTerm, votedFor = s.VotedFor()
-	utils.ValidateResult(t, utils.InvalidTermErrFmt, 8, currentTerm)
-	utils.ValidateResult(t, utils.InvalidVotedForErrFmt, -1, votedFor)
+	utils.ValidateResult(8, currentTerm, t)
+	utils.ValidateResult(-1, votedFor, t)
 }

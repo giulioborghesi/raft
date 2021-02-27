@@ -27,6 +27,13 @@ func Int64PairCheckSum(lhs int64, rhs int64) [28]byte {
 	w := &bytes.Buffer{}
 	binary.Write(w, binary.LittleEndian, lhs)
 	binary.Write(w, binary.LittleEndian, rhs)
-	checkSum := sha256.Sum224(w.Bytes())
-	return checkSum
+	return sha256.Sum224(w.Bytes())
+}
+
+// Int64StringCheckSum computes the checksum of a string and an int64 value
+func Int64StringCheckSum(s string, val int64) [28]byte {
+	w := &bytes.Buffer{}
+	binary.Write(w, binary.LittleEndian, s)
+	binary.Write(w, binary.LittleEndian, val)
+	return sha256.Sum224(w.Bytes())
 }

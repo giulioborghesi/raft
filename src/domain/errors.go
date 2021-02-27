@@ -19,6 +19,4 @@ const (
 	methodExpectedToFailErrFmt    = "method %s expected to fail"
 	methodExpectedToSucceedErrFmt = "method %s expected to succeed"
 	invalidInputErrFmt            = "input data not consistent for cluster of size %d"
-	sizeMismatchErrFmt            = "size mismatch: expected: %d, actual: %d"
-	valueMismatchErrFmt           = "value mismatch at index %d: expected: %d, actual: %d"
 )

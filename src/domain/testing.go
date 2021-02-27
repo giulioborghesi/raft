@@ -18,7 +18,7 @@ func makeTestServerState(currentTerm int64, votedFor int64, serverID int64,
 	dao := datasources.MakeInMemoryServerStateDao(currentTerm, votedFor)
 	log := &mockRaftLog{value: active}
 
-	s := makeServerState(dao, log, serverID)
+	s := MakeServerState(dao, log, serverID)
 	s.leaderID = leaderID
 	s.role = role
 	return s
@@ -43,18 +43,6 @@ func validateServerState(s *serverState, expectedRole int, expectedTerm int64,
 
 	if s.leaderID != expectedLeaderID {
 		t.Fatalf(invalidServerErrFmt, "leader", expectedLeaderID, s.leaderID)
-	}
-}
-
-func validateResults(expected []int64, actual []int64, t *testing.T) {
-	if len(expected) != len(actual) {
-		t.Fatalf(sizeMismatchErrFmt, len(expected), len(actual))
-	}
-
-	for i := 0; i < len(expected); i++ {
-		if expected[i] != actual[i] {
-			t.Fatalf(valueMismatchErrFmt, i, expected[i], actual[i])
-		}
 	}
 }
 

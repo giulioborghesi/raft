@@ -52,50 +52,64 @@ type abstractRaftLog interface {
 	nextIndex() int64
 }
 
+// MakeRaftLog creates and returns an instance of raftLog given an abstract
+// log dao object
+func MakeRaftLog(dao datasources.AbstractLogDao) abstractRaftLog {
+	return &raftLog{AbstractLogDao: dao}
+}
+
 // raftLog implements the abstractRaftLog interface. Log entries are stored
 // in memory for fast access as well as on permanent storage
 type raftLog struct {
-	e []*service.LogEntry
+	datasources.AbstractLogDao
 }
 
 func (l *raftLog) appendEntry(entry *service.LogEntry) int64 {
-	if entry != nil {
-		l.e = append(l.e, entry)
+	if err := l.AppendEntries([]*service.LogEntry{entry}); err != nil {
+		panic(err)
 	}
-	return int64(len(l.e)) - 1
+	return l.LastEntryIndex()
 }
 
 func (l *raftLog) appendEntries(entries []*service.LogEntry,
 	prevEntryTerm int64, prevEntryIndex int64) bool {
-	// Must replace all log entries
-	if prevEntryIndex == invalidLogEntryIndex {
-		l.e = entries
-		return true
-	}
-
-	// Previous log entry was removed
-	if (prevEntryIndex >= int64(len(l.e))) ||
-		(l.e[prevEntryIndex].EntryTerm != prevEntryTerm) {
+	// Nothing to do if previous entry index exceeds log length
+	if prevEntryIndex > l.LastEntryIndex() {
 		return false
 	}
 
-	// Log entry found: remove obsolete entries and append new ones
-	l.e = l.e[:prevEntryIndex+1]
-	l.e = append(l.e, entries...)
+	// Logs do not match: remove entries from prevEntryIndex and return false
+	if prevEntryTerm != l.entryTerm(prevEntryIndex) {
+		if err := l.RemoveEntries(prevEntryIndex - 1); err != nil {
+			panic(err)
+		}
+		return false
+	}
+
+	// Logs match: remove entries following prevEntryIndex
+	if err := l.RemoveEntries(prevEntryIndex); err != nil {
+		panic(err)
+	}
+
+	// Append new entries and return true if no error occurred
+	if err := l.AppendEntries(entries); err != nil {
+		panic(err)
+	}
 	return true
 }
 
 func (l *raftLog) entryTerm(idx int64) int64 {
+	// Nothing to do if entry index is -1
 	if idx == invalidLogEntryIndex {
 		return initialTerm
 	}
 
 	// Log entry exists, return its term
-	if idx < int64(len(l.e)) {
-		return l.e[idx].EntryTerm
+	if idx <= l.LastEntryIndex() {
+		return l.EntryTerm(idx)
 	}
 
-	// Log entry does not exist, return ID for invalid term
+	// Log entry does not exist, return invalid term ID
 	return invalidTerm
 }
 
@@ -105,8 +119,8 @@ func (l *raftLog) entries(entryIndex int64) ([]*service.LogEntry, int64) {
 	}
 
 	var entries []*service.LogEntry = nil
-	if entryIndex < int64(len(l.e)) {
-		entries = l.e[entryIndex:]
+	if entryIndex <= l.LastEntryIndex() {
+		entries = l.Entries(entryIndex)
 	}
 
 	prevEntryIndex := entryIndex - 1
@@ -114,35 +128,7 @@ func (l *raftLog) entries(entryIndex int64) ([]*service.LogEntry, int64) {
 }
 
 func (l *raftLog) nextIndex() int64 {
-	return int64(len(l.e))
-}
-
-// persistentRaftLog implements a log that stores entries in memory and on
-// durable storage
-type persistentRaftLog struct {
-	raftLog
-	dao datasources.AbstractLogDao
-}
-
-func (l *persistentRaftLog) appendEntry(entry *service.LogEntry) int64 {
-	entryIndex := l.raftLog.appendEntry(entry)
-	if err := l.dao.AppendEntry(entry); err != nil {
-		panic(err)
-	}
-	return entryIndex
-}
-
-func (l *persistentRaftLog) appendEntries(entries []*service.LogEntry,
-	prevEntryTerm int64, prevEntryIndex int64) bool {
-	if success := l.raftLog.appendEntries(entries, prevEntryTerm,
-		prevEntryIndex); !success {
-		return success
-	}
-
-	if err := l.dao.AppendEntries(entries, prevEntryIndex); err != nil {
-		panic(err)
-	}
-	return true
+	return l.LastEntryIndex() + 1
 }
 
 // mockRaftLog implements a mock log to be used for unit testing purposes
