@@ -88,7 +88,7 @@ func TestTimeoutGenerator(t *testing.T) {
 	// Call ring alarm in a separate threat
 	done := make(chan bool)
 	go func() {
-		handler.ringAlarm()
+		handler.RingAlarm()
 		done <- true
 	}()
 

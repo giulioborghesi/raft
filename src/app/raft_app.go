@@ -5,12 +5,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/giulioborghesi/raft-implementation/src/clients"
 	"github.com/giulioborghesi/raft-implementation/src/datasources"
 	"github.com/giulioborghesi/raft-implementation/src/domain"
+	"github.com/giulioborghesi/raft-implementation/src/handlers"
 	"github.com/giulioborghesi/raft-implementation/src/service"
-	"github.com/giulioborghesi/raft-implmenetation/src/handlers"
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc"
 )
@@ -31,15 +32,29 @@ func MakeRaftApp(stateFilePath string, logFilePath string,
 	serverState := domain.MakeServerState(serverStateDao, raftLog, serverID)
 	service := domain.MakeRaftService(serverState, serversInfo)
 
+	// Create timeout generators
+	eTmin := time.Duration(250 * time.Millisecond)
+	eTmax := time.Duration(350 * time.Millisecond)
+	electionTG := domain.MakeTimeoutGenerator(service.LastModified,
+		service.StartElection, eTmin, eTmax)
+
+	hTmin := time.Duration(100 * time.Millisecond)
+	hTmax := time.Duration(150 * time.Millisecond)
+	heartbeatTG := domain.MakeTimeoutGenerator(service.LastModified,
+		service.SendHeartbeat, hTmin, hTmax)
+
 	// Create and return Raft application
 	return &raftApp{
-		rpcServer:  handlers.RaftRPCService{raftService: service},
-		restServer: handlers.RaftRestServer{s: service}}
+		electionTG: electionTG, heartbeatTG: heartbeatTG,
+		rpcServer:  handlers.RaftRPCService{S: service},
+		restServer: handlers.RaftRestServer{S: service}}
 }
 
 type raftApp struct {
-	rpcServer  handlers.RaftRPCService
-	restServer handlers.RaftRestServer
+	electionTG  domain.AbstractTimeoutGenerator
+	heartbeatTG domain.AbstractTimeoutGenerator
+	rpcServer   handlers.RaftRPCService
+	restServer  handlers.RaftRestServer
 }
 
 func (a *raftApp) ListenAndServe(restPort, rpcPort string) error {
@@ -50,26 +65,29 @@ func (a *raftApp) ListenAndServe(restPort, rpcPort string) error {
 	}
 
 	// Create RPC listener
-	rpcLis, err := net.Listen("tpc", rpcPort)
+	rpcLis, err := net.Listen("tcp", rpcPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	cErr := make(chan error, 2)
 
+	// Start election timeout generator
+	go a.electionTG.RingAlarm()
+
 	// Start REST server
 	go func() {
 		r := mux.NewRouter()
 		r.StrictSlash(true)
 		r.HandleFunc("/command/", a.restServer.ApplyCommandAsync).Methods("POST")
-		r.HandleFunc("/command/{id:[0-9]+}", a.restServer.CommandStatus).Methods("GET")
+		r.HandleFunc("/command/{id}", a.restServer.CommandStatus).Methods("GET")
 		cErr <- http.Serve(restLis, r)
 	}()
 
 	// Start RPC server
 	go func() {
 		s := grpc.NewServer()
-		service.RegisterRaftServer(s, a.rpcServer)
+		service.RegisterRaftServer(s, &a.rpcServer)
 		cErr <- s.Serve(rpcLis)
 	}()
 

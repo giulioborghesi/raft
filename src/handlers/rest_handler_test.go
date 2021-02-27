@@ -17,7 +17,7 @@ func makeRouter() *mux.Router {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
-	server := &RaftRestServer{s: &restRaftService{}}
+	server := &RaftRestServer{S: &restRaftService{}}
 	router.HandleFunc("/command/", server.ApplyCommandAsync).Methods("POST")
 	router.HandleFunc("/command/{id:[0-9]+}", server.CommandStatus).Methods("GET")
 	return router

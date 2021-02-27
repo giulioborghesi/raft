@@ -9,13 +9,13 @@ import (
 
 type RaftRPCService struct {
 	service.UnimplementedRaftServer
-	raftService domain.AbstractRaftService
+	S domain.AbstractRaftService
 }
 
 func (h *RaftRPCService) AppendEntry(ctx context.Context,
 	r *service.AppendEntryRequest) (*service.AppendEntryReply, error) {
 	// Process AppendEntry request
-	currentTerm, success := h.raftService.AppendEntry(r.Entries, r.ServerTerm,
+	currentTerm, success := h.S.AppendEntry(r.Entries, r.ServerTerm,
 		r.ServerID, r.PrevEntryTerm, r.PrevEntryIndex, r.CommitIndex)
 
 	// Send reply to server
@@ -26,7 +26,7 @@ func (h *RaftRPCService) AppendEntry(ctx context.Context,
 func (h *RaftRPCService) RequestVote(ctx context.Context,
 	request *service.RequestVoteRequest) (*service.RequestVoteReply, error) {
 	// Forward call arguments to RaftService
-	localServerTerm, success := h.raftService.RequestVote(request.ServerTerm,
+	localServerTerm, success := h.S.RequestVote(request.ServerTerm,
 		request.ServerID, request.LastEntryTerm, request.LastEntryIndex)
 
 	// Prepare reply and return

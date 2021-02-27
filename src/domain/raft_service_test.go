@@ -78,7 +78,7 @@ func TestLeaderElection(t *testing.T) {
 	initialTerm := s.state.currentTerm()
 
 	// Force new election. Election is expected to fail
-	d := time.Since(s.lastModified())
+	d := time.Since(s.LastModified())
 	s.StartElection(d)
 
 	if s.state.role != candidate {
@@ -96,7 +96,7 @@ func TestLeaderElection(t *testing.T) {
 	}
 
 	// Force another election. Election is expected to succeed
-	d = time.Since(s.lastModified())
+	d = time.Since(s.LastModified())
 	s.StartElection(d)
 
 	if s.state.role != leader {

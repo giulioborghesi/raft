@@ -131,7 +131,7 @@ func (s *raftClusterSimulator) roles() []int64 {
 
 // sendHeartbeat sends an heartbeat to the followers
 func (s *raftClusterSimulator) sendHearthbeat(serverID int64) {
-	s.services[serverID].sendHeartbeat(0)
+	s.services[serverID].SendHeartbeat(0)
 }
 
 // setConnections allows to activate / sever the connections between a server

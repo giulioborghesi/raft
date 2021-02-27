@@ -41,7 +41,7 @@ type commandStatusResponse struct {
 // RaftRestServer is a REST server used to respond to REST requests received
 // from clients of the Raft cluster
 type RaftRestServer struct {
-	s domain.AbstractRaftService
+	S domain.AbstractRaftService
 }
 
 func (h *RaftRestServer) ApplyCommandAsync(w http.ResponseWriter,
@@ -52,7 +52,7 @@ func (h *RaftRestServer) ApplyCommandAsync(w http.ResponseWriter,
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	entryID, leaderID, _ := h.s.ApplyCommandAsync(payload)
+	entryID, leaderID, _ := h.S.ApplyCommandAsync(payload)
 
 	// Send response to client
 	response := &applyCommandResponse{EntryID: entryID, LeaderID: leaderID}
@@ -63,7 +63,7 @@ func (h *RaftRestServer) CommandStatus(w http.ResponseWriter,
 	req *http.Request) {
 	// Extract payload from request and apply command
 	entryID := mux.Vars(req)["id"]
-	entryStatus, leaderID, _ := h.s.CommandStatus(entryID)
+	entryStatus, leaderID, _ := h.S.CommandStatus(entryID)
 
 	// Send response to client
 	response := &commandStatusResponse{

@@ -67,6 +67,12 @@ func readLogStateFromFile(file *os.File) (int64, int64, error) {
 // writeLogStateToFile writes to log state to file
 func writeLogStateToFile(file *os.File, currentTerm int64,
 	votedFor int64) error {
+	// Set file offset to beginning
+	_, err := file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
 	// Write server term and voted for to file
 	w := bufio.NewWriter(file)
 	if err := binary.Write(w, binary.LittleEndian, currentTerm); err != nil {

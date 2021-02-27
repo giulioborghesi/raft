@@ -5,6 +5,20 @@ import (
 	"time"
 )
 
+// AbstractTimeoutGenerator defines the interface of a generic timeout
+// generator
+type AbstractTimeoutGenerator interface {
+	RingAlarm()
+}
+
+// MakeTimeoutGenerator creates and initializes an instance of a timeout
+// generator
+func MakeTimeoutGenerator(lh func() time.Time, th func(time.Duration),
+	toMin time.Duration, toMax time.Duration) *timeoutGenerator {
+	return &timeoutGenerator{active: true, tLastHandler: lh,
+		tOutHandler: th, toMin: toMin, toMax: toMax}
+}
+
 // timeoutGenerator defines an object that handles a timeout
 type timeoutGenerator struct {
 	active       bool
@@ -52,7 +66,7 @@ func sleepTime(t time.Time, to, toMin, toMax time.Duration) (time.Duration,
 // whenever the timeout has expired. A new timeout is generated only after
 // the current timeout has expired. Expiration occurs when the time elapsed
 // since the last change made to the server exceeds the timeout
-func (h *timeoutGenerator) ringAlarm() {
+func (h *timeoutGenerator) RingAlarm() {
 	sleepFor, to, expired := sleepTime(time.Now(), h.to, h.toMin, h.toMax)
 	for h.active {
 		// Sleep for the specified time and update timeout

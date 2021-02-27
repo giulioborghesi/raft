@@ -52,7 +52,7 @@ func decodeEntry(encodedKey string) (int64, int64) {
 // makeLeaderRole creates and initializes an instance of leaderRole
 func makeLeaderRole(replicators []abstractEntryReplicator,
 	serverID int64, clusterSize int) *leaderRole {
-	matchIndices := make([]int64, 0)
+	matchIndices := make([]int64, clusterSize)
 	matchIndices[serverID] = math.MaxInt64
 	return &leaderRole{replicators: replicators, matchIndices: matchIndices}
 }
